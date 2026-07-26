@@ -1,0 +1,56 @@
+# ================================================================================
+#  SwagHub — Holograms  (module: holograms — §11 build step 7 / §5.8)
+# ================================================================================
+#
+#  Every entry under "holograms:" below is a TextDisplay-based hologram, spawned as
+#  one entity PER LINE (never one multi-line entity), stacked vertically below the
+#  hologram's own x/y/z anchor, top line first. This file — not any world-saved
+#  entity state — is always the source of truth: on every module enable and every
+#  "/ah reload", SwagHub re-derives the correct set of entities from what's written
+#  here, patching (never blindly recreating) whatever it finds already in the world.
+#
+#  Manage holograms in-game with "/ah hologram <create|delete|addline|setline|
+#  removeline|movehere|list>" (permission: swaghub.command.hologram, default op) —
+#  every command writes this file to disk IMMEDIATELY, never only on shutdown. You
+#  can also hand-edit this file directly and run "/ah reload" to apply changes.
+#
+#  Lines are parsed as MiniMessage and support SwagHub's own %swaghub_...%
+#  placeholders (§5.11) plus any PlaceholderAPI placeholder, resolved fresh on every
+#  render tick — no single "acting player" exists for a shared world hologram, so
+#  player-specific placeholders that need one will resolve as if for a null player.
+#
+#  FORMAT:
+#    <hologram-id>:
+#      world: "world"
+#      x: 0.5
+#      y: 65.0
+#      z: 0.5
+#      lines:
+#        - "<gradient:#7b2ff7:#f107a3><bold>Welcome to the hub!</bold></gradient>"
+#        - "<gray>Total players online: <white>%swaghub_count_total%</white></gray>"
+#      refresh-interval-ticks: 100   # optional per-hologram override (see below)
+#
+#  A malformed entry (missing world/x/y/z, or zero lines) logs one specific warning
+#  naming the hologram id and is skipped — every other hologram still loads normally.
+
+# How often (in game ticks — 20 ticks = 1 second) hologram text is re-resolved and
+# re-rendered by default. Individual holograms may override this via their own
+# "refresh-interval-ticks" key above.
+refresh-interval-ticks: 100
+
+# Vertical gap (in blocks) between each stacked line of the same hologram.
+line-spacing: 0.28
+
+holograms:
+  # Shipped example — satisfies §10.2's "example hologram" requirement with
+  # genuinely instructive text. Coordinates are a generic placeholder; move it to
+  # wherever you actually want it with "/ah hologram movehere example".
+  example:
+    world: "world"
+    x: 0.5
+    y: 65.0
+    z: 0.5
+    lines:
+      - "<gradient:#7b2ff7:#f107a3><bold>Welcome to the hub!</bold></gradient>"
+      - "<gray>Manage holograms with </gray><yellow>/ah hologram</yellow>"
+      - "<gray>Players online: <white>%swaghub_count_total%</white></gray>"

@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SwagHub — Hub Options</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+    <div class="topbar-brand">
+        <span class="brand-dot"></span>
+        <span class="brand-wordmark">SwagHub</span>
+        <span class="brand-sub">Hub Options</span>
+    </div>
+    <div class="topbar-right">
+        <span id="whoami" class="whoami"></span>
+        <a href="/swagapi/swagcore/" class="btn btn-ghost btn-sm">SwagCore Dashboard</a>
+        <a href="/logout" class="btn btn-ghost btn-sm">Log out</a>
+    </div>
+</header>
+
+<nav class="tab-nav">
+    <button class="tab-btn active" data-tab="tab-status">Status</button>
+    <button class="tab-btn" data-tab="tab-core">Core Options</button>
+    <button class="tab-btn" data-tab="tab-scoreboard">Scoreboard</button>
+    <button class="tab-btn" data-tab="tab-tablist">Tablist</button>
+    <button class="tab-btn" data-tab="tab-announcements">Announcements</button>
+</nav>
+
+<main class="content">
+
+    <!-- ─── Status ─────────────────────────────────────────── -->
+    <section id="tab-status" class="tab-content active">
+        <h2>Status</h2>
+        <div class="card" id="status-summary">Loading...</div>
+
+        <h3>Modules</h3>
+        <table class="data-table">
+            <thead>
+            <tr><th>Module</th><th>Enabled</th><th>Override</th><th>Yielded to</th></tr>
+            </thead>
+            <tbody id="status-modules-body">
+            <tr><td colspan="4" class="muted center">Loading...</td></tr>
+            </tbody>
+        </table>
+
+        <h3>Proxy</h3>
+        <div class="card" id="status-proxy">Loading...</div>
+
+        <h3>Update</h3>
+        <div class="card" id="status-update">Loading...</div>
+    </section>
+
+    <!-- ─── Core Options ───────────────────────────────────── -->
+    <section id="tab-core" class="tab-content hidden">
+        <h2>Core Options</h2>
+
+        <div class="editor-block">
+            <h3>Server Role</h3>
+            <div class="field-row">
+                <label for="core-server-role">server-role</label>
+                <select id="core-server-role">
+                    <option value="hub">hub</option>
+                    <option value="game">game</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="editor-block">
+            <h3>Hub Worlds</h3>
+            <p class="hint">One world name per line. Leave empty to apply to ALL worlds.</p>
+            <textarea id="core-hub-worlds" rows="4" placeholder="world&#10;world_nether"></textarea>
+        </div>
+
+        <div class="editor-block">
+            <h3>Compatibility</h3>
+            <div class="field-row">
+                <label for="core-auto-yield">auto-yield</label>
+                <input type="checkbox" id="core-auto-yield">
+            </div>
+            <p class="hint">Per-module override: <code>auto</code> follows auto-yield, <code>enabled</code>/<code>disabled</code> force the module regardless of conflicts.</p>
+            <table class="data-table" id="core-overrides-table">
+                <thead><tr><th>Module</th><th>Override</th></tr></thead>
+                <tbody id="core-overrides-body"></tbody>
+            </table>
+        </div>
+
+        <div class="editor-block">
+            <h3>Modules</h3>
+            <p class="hint"><code>default</code> uses the module's own built-in default (which may itself depend on server-role above); <code>on</code>/<code>off</code> force it regardless.</p>
+            <table class="data-table" id="core-modules-table">
+                <thead><tr><th>Module</th><th>Toggle</th></tr></thead>
+                <tbody id="core-modules-body"></tbody>
+            </table>
+        </div>
+
+        <div class="editor-actions">
+            <button class="btn btn-primary" id="core-save-btn">Save &amp; Reload</button>
+            <span class="save-status" id="core-save-status"></span>
+        </div>
+    </section>
+
+    <!-- ─── Scoreboard ─────────────────────────────────────── -->
+    <section id="tab-scoreboard" class="tab-content hidden">
+        <h2>Scoreboard</h2>
+        <div class="yield-banner hidden" id="sb-yield-banner"></div>
+
+        <div class="editor-block">
+            <div class="field-row">
+                <label for="sb-update-interval">update-interval-ticks</label>
+                <input type="number" id="sb-update-interval" min="1" value="20">
+            </div>
+        </div>
+
+        <div class="editor-block">
+            <h3>Worlds</h3>
+            <div class="editor-field-row">
+                <select id="sb-world-select"></select>
+                <button class="btn btn-ghost btn-sm" id="sb-add-world-btn">+ Add World</button>
+                <button class="btn btn-danger btn-sm hidden" id="sb-delete-world-btn">Delete</button>
+            </div>
+
+            <h4>Title</h4>
+            <p class="hint">One frame per line. A single line is static text; multiple lines cycle every <code>frameIntervalTicks</code>.</p>
+            <textarea id="sb-title-frames" rows="3"></textarea>
+            <div class="field-row">
+                <label for="sb-title-interval">frameIntervalTicks</label>
+                <input type="number" id="sb-title-interval" min="0" value="10">
+            </div>
+
+            <h4>Lines (top first, max 15)</h4>
+            <textarea id="sb-lines" rows="8"></textarea>
+        </div>
+
+        <div class="editor-actions">
+            <button class="btn btn-primary" id="sb-save-btn">Save &amp; Reload</button>
+            <span class="save-status" id="sb-save-status"></span>
+        </div>
+    </section>
+
+    <!-- ─── Tablist ────────────────────────────────────────── -->
+    <section id="tab-tablist" class="tab-content hidden">
+        <h2>Tablist</h2>
+        <div class="yield-banner hidden" id="tl-yield-banner"></div>
+
+        <div class="editor-block">
+            <div class="field-row">
+                <label for="tl-update-interval">update-interval-ticks</label>
+                <input type="number" id="tl-update-interval" min="1" value="20">
+            </div>
+        </div>
+
+        <div class="editor-block">
+            <h3>Worlds</h3>
+            <div class="editor-field-row">
+                <select id="tl-world-select"></select>
+                <button class="btn btn-ghost btn-sm" id="tl-add-world-btn">+ Add World</button>
+                <button class="btn btn-danger btn-sm hidden" id="tl-delete-world-btn">Delete</button>
+            </div>
+
+            <h4>Header</h4>
+            <textarea id="tl-header-frames" rows="3"></textarea>
+            <div class="field-row">
+                <label for="tl-header-interval">frameIntervalTicks</label>
+                <input type="number" id="tl-header-interval" min="0" value="15">
+            </div>
+
+            <h4>Footer</h4>
+            <textarea id="tl-footer-frames" rows="3"></textarea>
+            <div class="field-row">
+                <label for="tl-footer-interval">frameIntervalTicks</label>
+                <input type="number" id="tl-footer-interval" min="0" value="20">
+            </div>
+        </div>
+
+        <div class="editor-actions">
+            <button class="btn btn-primary" id="tl-save-btn">Save &amp; Reload</button>
+            <span class="save-status" id="tl-save-status"></span>
+        </div>
+    </section>
+
+    <!-- ─── Announcements ──────────────────────────────────── -->
+    <section id="tab-announcements" class="tab-content hidden">
+        <h2>Announcements</h2>
+        <div class="yield-banner hidden" id="an-yield-banner"></div>
+
+        <div class="editor-block">
+            <div class="field-row">
+                <label for="an-check-interval">check-interval-ticks</label>
+                <input type="number" id="an-check-interval" min="1" value="20">
+            </div>
+            <div class="field-row">
+                <label for="an-default-interval">default-interval-ticks</label>
+                <input type="number" id="an-default-interval" min="1" value="600">
+            </div>
+        </div>
+
+        <div class="editor-block">
+            <h3>Worlds</h3>
+            <div class="editor-field-row">
+                <select id="an-world-select"></select>
+                <button class="btn btn-ghost btn-sm" id="an-add-world-btn">+ Add World</button>
+                <button class="btn btn-danger btn-sm hidden" id="an-delete-world-btn">Delete</button>
+            </div>
+
+            <div class="field-row">
+                <label for="an-rotation">rotation</label>
+                <select id="an-rotation">
+                    <option value="SEQUENTIAL">sequential</option>
+                    <option value="RANDOM">random</option>
+                </select>
+            </div>
+            <div class="field-row">
+                <label for="an-interval-override">intervalTicksOverride</label>
+                <input type="number" id="an-interval-override" min="1" placeholder="(use default-interval-ticks)">
+            </div>
+
+            <h4>Entries</h4>
+            <p class="hint">One entry per block. Each line inside a block is one action string (e.g. <code>[message] Hello %player%</code>). Entries rotate sequentially or randomly per the setting above.</p>
+            <div id="an-entries-list"></div>
+            <button class="btn btn-ghost btn-sm" id="an-add-entry-btn">+ Add Entry</button>
+        </div>
+
+        <div class="editor-actions">
+            <button class="btn btn-primary" id="an-save-btn">Save &amp; Reload</button>
+            <span class="save-status" id="an-save-status"></span>
+        </div>
+    </section>
+
+</main>
+
+<footer class="app-footer">
+    <span class="brand-wordmark">SwagHub</span>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

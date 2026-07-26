@@ -1,0 +1,41 @@
+# ================================================================================
+#  SwagHub — Launchpads  (module: launchpads — §11 build step 6 / §5.7)
+# ================================================================================
+#
+#  ALWAYS enabled regardless of "server-role" in config.yml (§6.2 lists launchpads
+#  among the utility modules that stay on for BOTH hub and game roles) — force it off
+#  with "modules.launchpads: false" under config.yml's "modules:" section if needed.
+#
+#  Every entry under "launchpads:" below is a single BLOCK location. Place a real
+#  pressure plate (any "*_PRESSURE_PLATE" material) at that exact block, and stepping
+#  on it launches the player in their current look direction + upward, with an
+#  optional particle/sound. Gated by "hub-worlds" in config.yml, same as everything
+#  else. There is no wand/selection command — set coordinates by hand, the same
+#  "simple config-only, no UI" choice world-protection's pvp-zones already made.
+#
+#  FORMAT (every field except "world"/"x"/"y"/"z" is optional):
+#    <launchpad-id>:
+#      world: world
+#      x: 0                  # block coordinates (REQUIRED)
+#      y: 65
+#      z: 10
+#      power: 1.6            # horizontal launch strength (default 1.6)
+#      height: 1.4           # vertical launch strength (default 1.4)
+#      particle: CLOUD       # a valid org.bukkit.Particle name (optional)
+#      sound: ENTITY_SLIME_JUMP   # a valid org.bukkit.Sound name (optional)
+#
+#  A malformed entry (missing world/x/y/z, non-positive power/height) logs one
+#  specific warning naming the launchpad id and the problem; power/height fall back
+#  to their defaults rather than being skipped entirely, everything else is skipped
+#  and every other launchpad still loads normally (§10.4).
+
+launchpads:
+  example-pad:
+    world: world
+    x: 0
+    y: 65
+    z: 10
+    power: 1.6
+    height: 1.4
+    particle: CLOUD
+    sound: ENTITY_SLIME_JUMP

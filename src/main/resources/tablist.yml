@@ -1,0 +1,27 @@
+# ================================================================================
+#  SwagHub — Tablist  (module: tablist — §11 build step 5)
+# ================================================================================
+# Defaults to ENABLED only when server-role: hub, and only shown to a player while
+# they're standing in a world listed in config.yml's "hub-worlds" (or every world, if
+# that list is empty) — see scoreboard.yml's header comment for the exact same rule.
+# No per-player toggle exists for the tablist.
+#
+# FORMAT: "worlds:" is a map of world name -> header/footer content, PLUS a mandatory
+# "default" key used as a fallback for any hub world not explicitly listed by name.
+# Each world entry has:
+#   header: { frames: [...], frame-interval-ticks: N }
+#   footer: { frames: [...], frame-interval-ticks: N }
+# Same frame/interval shape as scoreboard.yml's title — one frame = static text.
+
+update-interval-ticks: 20
+
+worlds:
+  default:
+    header:
+      frames:
+        - "<gradient:#7b2ff7:#f107a3>Welcome to the network!</gradient>"
+      frame-interval-ticks: 0
+    footer:
+      frames:
+        - "<gray>Online:</gray> <white>%swaghub_count_total%</white>"
+      frame-interval-ticks: 0

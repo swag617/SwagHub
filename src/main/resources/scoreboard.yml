@@ -1,0 +1,36 @@
+# ================================================================================
+#  SwagHub — Scoreboard  (module: scoreboard — §11 build step 5)
+# ================================================================================
+# Defaults to ENABLED only when server-role: hub (see config.yml's Step 5 note), and
+# only shown to a player while they're standing in a world listed in config.yml's
+# "hub-worlds" (or every world, if that list is empty). Per-player toggle: "/ah
+# scoreboard".
+#
+# FORMAT: "worlds:" is a map of world name -> scoreboard content, PLUS a mandatory
+# "default" key used as a fallback for any hub world not explicitly listed by name.
+# Each world entry has:
+#   title:
+#     frames: [ "<MiniMessage text>", ... ]   # one element = static title
+#     frame-interval-ticks: N                 # 0 = static (no cycling); 20 ticks = 1s
+#   lines: [ "<MiniMessage text with %placeholders%>", ... ]  # top line first,
+#                                                              # max 15 (Minecraft's
+#                                                              # real sidebar limit)
+#
+# Lines/titles are resolved through SwagHub's own %swaghub_...% placeholders (see
+# SwagHubPlaceholders) and, if PlaceholderAPI is installed, every other plugin's
+# placeholders too, before being parsed as MiniMessage.
+
+update-interval-ticks: 20
+
+worlds:
+  default:
+    title:
+      frames:
+        - "<gradient:#7b2ff7:#f107a3>SWAGHUB</gradient>"
+        - "<gradient:#f107a3:#7b2ff7>NETWORK</gradient>"
+      frame-interval-ticks: 20
+    lines:
+      - ""
+      - "<gray>Players:</gray> <white>%swaghub_count_total%</white>"
+      - ""
+      - "<gray>play.swaghub.net</gray>"

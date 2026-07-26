@@ -1,0 +1,44 @@
+# ================================================================================
+#  SwagHub — Proxy Portals  (module: portals — §11 build step 7 / §3.3 / §5.8)
+# ================================================================================
+#
+#  A "portal" is a config-defined cuboid that proxy-connects any player who walks
+#  into it to a configured backend server (§3.3), with a per-player cooldown to
+#  prevent reconnect loops. Portals are NOT action-list-driven — walking into one
+#  calls the proxy service directly, the same way "/setlobby"'s location is a real,
+#  admin-placed spot rather than a world-wide toggle.
+#
+#  No example portal ships by default — unlike holograms, a portal needs a REAL
+#  destination backend server name (which this plugin can't safely guess) and a
+#  region an admin has actually walked/selected, so there's nothing sensible to
+#  pre-fill. Create one with the wand:
+#    1. "/ah portal wand" (permission: swaghub.command.portal, default op) — gives a
+#       tagged stick. It never breaks/interacts with the world.
+#    2. Left-click a block for corner 1, right-click a block for corner 2.
+#    3. "/ah portal create <id> <server>" — <server> must exactly match a backend
+#       name configured on the proxy itself (same requirement as "proxy.servers" in
+#       config.yml).
+#  Manage existing portals with "/ah portal <delete|list>". Every command writes
+#  this file to disk IMMEDIATELY, never only on shutdown. You can also hand-edit this
+#  file directly and run "/ah reload" to apply changes — see the FORMAT below.
+#
+#  FORMAT:
+#    <portal-id>:
+#      world: "world"
+#      server: "survival"
+#      corner1: { x: 100, y: 60, z: 100 }
+#      corner2: { x: 103, y: 63, z: 103 }
+#      cooldown-seconds: 5   # optional per-portal override (see below)
+#
+#  A malformed entry (missing world/server/corner1/corner2) logs one specific
+#  warning naming the portal id and is skipped — every other portal still loads
+#  normally.
+
+# Minimum seconds between proxy-connect triggers for the same player, tracked
+# GLOBALLY per player (not per-portal) — this is what actually prevents a
+# reconnect/bounce-back loop through ANY portal, not just the same one twice in a
+# row. A blocked re-trigger during the cooldown window is always silent (no
+# message) to avoid spamming a player standing inside a portal's cuboid.
+cooldown-seconds: 3
+
+portals: {}

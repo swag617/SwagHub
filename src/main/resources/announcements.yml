@@ -1,0 +1,32 @@
+# ================================================================================
+#  SwagHub — Announcements  (module: announcements — §11 build step 5)
+# ================================================================================
+# Defaults to ENABLED only when server-role: hub, and only run in a world listed in
+# config.yml's "hub-worlds" (or every world, if that list is empty) — see
+# scoreboard.yml's header comment for the exact same rule. Broadcasts to every player
+# currently in the eligible world, not just one "triggering" player.
+#
+# FORMAT: "worlds:" is a map of world name -> announcement content, PLUS a mandatory
+# "default" key used as a fallback for any hub world not explicitly listed by name.
+# Each world entry has:
+#   rotation: sequential|random   # default: sequential
+#   interval-ticks: N             # optional per-world override; falls back to
+#                                  # "default-interval-ticks" below if omitted
+#   entries:
+#     - actions: [ "[tag] argument", ... ]   # any combination of action tags —
+#     - actions: [ "[tag] argument", ... ]   #   [message], [actionbar], [title],
+#                                             #   [sound], [centered-message], and
+#                                             #   any other registered action type
+
+check-interval-ticks: 20
+default-interval-ticks: 600
+
+worlds:
+  default:
+    rotation: sequential
+    entries:
+      - actions:
+          - "[message] <gradient:#7b2ff7:#f107a3>Thanks for playing on the network!</gradient>"
+      - actions:
+          - "[actionbar] <yellow>Don't forget to vote for the server!</yellow>"
+          - "[sound] ENTITY_EXPERIENCE_ORB_PICKUP;1;1"

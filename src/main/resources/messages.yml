@@ -1,0 +1,196 @@
+# ================================================================================
+#  SwagHub — user-facing messages
+#  Every value here is parsed as MiniMessage (https://docs.advntr.dev/minimessage/)
+#  — hex colors, gradients, and legacy-style tags are all supported, e.g.:
+#    "<gradient:#7b2ff7:#f107a3>Hello</gradient> <green>world</green>!"
+#  As feature modules are added in later build steps, their messages are appended
+#  to this file under their own key, never inline in code.
+# ================================================================================
+
+# Prepended automatically to messages sent via MessageUtil#send(...).
+prefix: "<gray>[<gradient:#7b2ff7:#f107a3>SwagHub</gradient>]</gray> "
+
+no-permission: "<red>You don't have permission to do that.</red>"
+
+reload-complete: "<green>SwagHub configuration and modules reloaded.</green>"
+
+unknown-subcommand: "<red>Unknown subcommand. Try </red><yellow>/swaghub info</yellow><red>.</red>"
+
+player-only-command: "<red>Only players can use this command.</red>"
+
+module-disabled: "<red>This feature is currently disabled.</red>"
+
+# --------------------------------------------------------------------------------
+# Spawn / Lobby (module: spawn — §11 build step 2)
+# --------------------------------------------------------------------------------
+setlobby-set: "<green>Lobby location set to your current position.</green>"
+
+lobby-not-set: "<red>The lobby location has not been set yet. Ask an admin to run </red><yellow>/setlobby</yellow><red>.</red>"
+
+lobby-teleporting-now: "<green>Teleporting to the lobby...</green>"
+
+# %seconds% is substituted with the configured spawn.lobby-teleport-delay-ticks, in seconds.
+lobby-teleporting-in: "<green>Teleporting to the lobby in <yellow>%seconds%</yellow> second(s). Don't move!</green>"
+
+lobby-teleport-cancelled: "<red>Teleport cancelled — you moved.</red>"
+
+# --------------------------------------------------------------------------------
+# Join Settings (module: join-settings — §11 build step 2)
+# --------------------------------------------------------------------------------
+# Sent privately to a player the very first time they join — separate from any
+# server-wide join broadcast (which SwagCore owns when installed, per §6.3).
+first-join-message: "<gray>[<gradient:#7b2ff7:#f107a3>SwagHub</gradient>]</gray> <white>Welcome to the network, this is your first time here!</white>"
+
+# --------------------------------------------------------------------------------
+# Proxy Service (module: proxy — §11 build step 3)
+# --------------------------------------------------------------------------------
+# Sent when a "Connect" appears to have silently failed — the player is still on
+# THIS server after "proxy.connect-timeout-ticks" have passed (see config.yml's
+# "proxy:" section). %server% is substituted with the target server name that was
+# requested (e.g. from a "[server] <name>" action).
+server-offline: "<red>Could not connect you to <yellow>%server%</yellow> — that server appears to be offline.</red>"
+
+# Sent by "/ah proxy servers" (and any future proxy-dependent admin command) when
+# the proxy module is currently disabled.
+proxy-module-disabled: "<red>The proxy module is currently disabled. Enable it via </red><yellow>modules.proxy</yellow><red> in config.yml.</red>"
+
+# --------------------------------------------------------------------------------
+# Menus / Server Selector (module: menus — §11 build step 4)
+# --------------------------------------------------------------------------------
+# %menu% is substituted with the menu id that was requested.
+menu-not-found: "<red>No menu named <yellow>%menu%</yellow> exists.</red>"
+
+menu-no-permission: "<red>You don't have permission to open that menu.</red>"
+
+# Sent by "/ah open" (and any future menu-dependent admin command) when the menus
+# module is currently disabled.
+menus-module-disabled: "<red>The menu module is currently disabled. Enable it via </red><yellow>modules.menus</yellow><red> in config.yml.</red>"
+
+# Sent by "/ah open <menu> <player>" when the named player isn't online. %player%
+# is substituted with the name that was given.
+player-not-found: "<red>Player <yellow>%player%</yellow> is not online.</red>"
+
+# --------------------------------------------------------------------------------
+# Scoreboard (module: scoreboard — §11 build step 5)
+# --------------------------------------------------------------------------------
+scoreboard-toggled-on: "<green>Scoreboard enabled.</green>"
+
+scoreboard-toggled-off: "<red>Scoreboard disabled.</red>"
+
+# Sent by "/ah scoreboard" when the scoreboard module is currently disabled.
+scoreboard-module-disabled: "<red>The scoreboard module is currently disabled. Enable it via </red><yellow>modules.scoreboard</yellow><red> in config.yml.</red>"
+
+# --------------------------------------------------------------------------------
+# Fly / Gamemode / Vanish (modules: fly, gamemode, vanish — §11 build step 6)
+# --------------------------------------------------------------------------------
+fly-enabled: "<green>Flight enabled.</green>"
+
+fly-disabled: "<red>Flight disabled.</red>"
+
+# Sent instead of toggling when the target already has flight from something SwagHub
+# doesn't own (creative/spectator gamemode, or a grant made by another module/plugin) —
+# see FlyModule's javadoc for the stand-down reasoning.
+fly-already-enabled-elsewhere: "<yellow>Flight is already enabled by your game mode or another plugin — nothing to toggle.</yellow>"
+
+# %gamemode% is substituted with the new game mode's display name (e.g. "Creative").
+gamemode-changed: "<green>Your game mode was set to <yellow>%gamemode%</yellow>.</green>"
+
+# Sent to the SENDER (not the target) when changing another player's game mode.
+# %gamemode% and %player% are substituted.
+gamemode-changed-other: "<green><yellow>%player%</yellow>'s game mode was set to <yellow>%gamemode%</yellow>.</green>"
+
+vanish-enabled: "<green>You are now vanished.</green>"
+
+vanish-disabled: "<red>You are no longer vanished.</red>"
+
+# Sent to the SENDER (not the target) when toggling another player's vanish. %player% is substituted.
+vanish-enabled-other: "<green><yellow>%player%</yellow> is now vanished.</green>"
+
+vanish-disabled-other: "<red><yellow>%player%</yellow> is no longer vanished.</red>"
+
+# --------------------------------------------------------------------------------
+# Chat Controls (module: lockchat — §11 build step 6, deferred from step 2)
+# --------------------------------------------------------------------------------
+lockchat-toggled-on: "<red>Chat is now locked. Only players with a bypass permission can talk.</red>"
+
+lockchat-toggled-off: "<green>Chat is now unlocked.</green>"
+
+chat-locked-blocked: "<red>Chat is currently locked.</red>"
+
+# %seconds% is substituted with the remaining cooldown, rounded up.
+chat-cooldown-blocked: "<red>You must wait <yellow>%seconds%</yellow> more second(s) before chatting again.</red>"
+
+command-blocked: "<red>That command is currently blocked.</red>"
+
+# --------------------------------------------------------------------------------
+# Player Hider (module: player-hider — §11 build step 6)
+# --------------------------------------------------------------------------------
+# %state% is substituted with the new state's display name (e.g. "Hide Others").
+player-hider-cycled: "<green>Player visibility set to <yellow>%state%</yellow>.</green>"
+
+# %seconds% is substituted with the remaining cooldown, rounded up.
+player-hider-cooldown: "<red>You must wait <yellow>%seconds%</yellow> more second(s) before changing this again.</red>"
+
+# --------------------------------------------------------------------------------
+# Anti-WorldDownloader (module: anti-wdl — §11 build step 6, deferred from step 2)
+# --------------------------------------------------------------------------------
+wdl-kicked: "<red>WorldDownloader is not permitted on this server.</red>"
+
+wdl-warned: "<red>WorldDownloader detected — using it here is not permitted. Please disconnect it.</red>"
+
+# --------------------------------------------------------------------------------
+# Holograms (module: holograms — §11 build step 7 / §5.8)
+# --------------------------------------------------------------------------------
+# %id% is substituted with the hologram id in every message below that has one.
+holograms-module-disabled: "<red>The hologram module is currently disabled. Enable it via </red><yellow>modules.holograms</yellow><red> in config.yml.</red>"
+
+hologram-created: "<green>Hologram <yellow>%id%</yellow> created at your location.</green>"
+
+hologram-already-exists: "<red>A hologram named <yellow>%id%</yellow> already exists.</red>"
+
+hologram-deleted: "<green>Hologram <yellow>%id%</yellow> deleted.</green>"
+
+hologram-not-found: "<red>No hologram named <yellow>%id%</yellow> exists.</red>"
+
+hologram-line-added: "<green>Line added to hologram <yellow>%id%</yellow>.</green>"
+
+hologram-line-updated: "<green>Hologram <yellow>%id%</yellow> updated.</green>"
+
+hologram-invalid-index: "<red>That line index doesn't exist on that hologram.</red>"
+
+hologram-cannot-remove-last-line: "<red>Can't remove a hologram's last remaining line — delete the hologram instead.</red>"
+
+hologram-moved: "<green>Hologram <yellow>%id%</yellow> moved to your location.</green>"
+
+hologram-list-header: "<gray>Configured holograms:</gray>"
+
+hologram-list-empty: "<yellow>No holograms are configured yet — create one with </yellow><gray>/ah hologram create <id></gray>"
+
+# --------------------------------------------------------------------------------
+# Proxy Portals (module: portals — §11 build step 7 / §3.3 / §5.8)
+# --------------------------------------------------------------------------------
+# %id%/%server% are substituted with the portal id / destination backend server name
+# in every message below that has one.
+portals-module-disabled: "<red>The portal module is currently disabled. Enable it via </red><yellow>modules.portals</yellow><red> in config.yml.</red>"
+
+portal-wand-given: "<green>You received the portal wand. Left-click a block for corner 1, right-click a block for corner 2.</green>"
+
+portal-wand-corner1-set: "<gray>Portal corner 1 set.</gray>"
+
+portal-wand-corner2-set: "<gray>Portal corner 2 set.</gray>"
+
+portal-created: "<green>Portal <yellow>%id%</yellow> created, connecting to <yellow>%server%</yellow>.</green>"
+
+portal-already-exists: "<red>A portal named <yellow>%id%</yellow> already exists.</red>"
+
+portal-no-selection: "<red>You need both wand corners set first — get the wand with </red><yellow>/ah portal wand</yellow><red>.</red>"
+
+portal-different-worlds: "<red>Your two wand corners are in different worlds — re-select both in the same world.</red>"
+
+portal-deleted: "<green>Portal <yellow>%id%</yellow> deleted.</green>"
+
+portal-not-found: "<red>No portal named <yellow>%id%</yellow> exists.</red>"
+
+portal-list-header: "<gray>Configured portals:</gray>"
+
+portal-list-empty: "<yellow>No portals are configured yet — get the wand with </yellow><gray>/ah portal wand</gray>"

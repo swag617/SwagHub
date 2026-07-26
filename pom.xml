@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.SwagDev</groupId>
+    <artifactId>SwagHub</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>SwagHub</name>
+    <description>Next-generation hub/lobby core plugin built on SwagAPI</description>
+
+    <!--
+         Build step 10 (§10/§12 close-out — see DECISIONS.md's Step 10 section):
+         License is MIT. SwagHub hard-depends on the private, unpublished SwagAPI jar
+         (see the system-scope dependency below), so full public redistribution isn't
+         really in play yet — a permissive license is the correct choice for now and
+         costs nothing to declare up front.
+    -->
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <properties>
+        <java.version>21</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+    </properties>
+
+    <repositories>
+        <repository>
+            <id>papermc-repo</id>
+            <url>https://repo.papermc.io/repository/maven-public/</url>
+        </repository>
+        <!--
+             PlaceholderAPI — provided scope only (build step 4). SwagHub calls
+             me.clip.placeholderapi.PlaceholderAPI#setPlaceholders(...) directly from
+             SwagHubPlaceholders#apply(...), but ALWAYS behind a runtime
+             getPluginManager().getPlugin("PlaceholderAPI") presence/isEnabled() check
+             first — this compile-time dependency never becomes a hard runtime
+             requirement (it's already declared as a softdepend in plugin.yml, not a
+             depend). Never shaded, matching paper-api's own provided scope.
+        -->
+        <repository>
+            <id>placeholderapi</id>
+            <url>https://repo.extendedclip.com/content/repository/placeholderapi/</url>
+        </repository>
+    </repositories>
+
+    <dependencies>
+        <!-- Paper API -->
+        <dependency>
+            <groupId>io.papermc.paper</groupId>
+            <artifactId>paper-api</artifactId>
+            <version>1.21.1-R0.1-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- PlaceholderAPI (provided scope — see the repository comment above) -->
+        <dependency>
+            <groupId>me.clip</groupId>
+            <artifactId>placeholderapi</artifactId>
+            <version>2.11.6</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- SwagAPI (hard dep, system scope — never shaded) -->
+        <dependency>
+            <groupId>com.SwagDev</groupId>
+            <artifactId>SwagAPI</artifactId>
+            <version>1.0.0</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/libs/SwagAPI-1.0.0.jar</systemPath>
+        </dependency>
+
+        <!--
+             gson (build step 9, §7 — the web editor's JSON request/response bodies).
+             provided scope, NEVER shaded: Paper's own server jar already ships
+             com.google.gson at runtime (Minecraft's codec system depends on it), the
+             same verified pattern already in use by SwagCore's DashboardApiHandler and
+             SwagRestartScheduler's WebEditorHttpHandler (see the cross-project memory
+             note on this). Declaring it explicitly here (rather than relying on the
+             transitive paper-api classpath alone) keeps compilation reproducible even
+             if that transitive availability were ever to change.
+        -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.10.1</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!--
+             bStats (build step 8, §5.11 — toggleable metrics via config.yml's
+             metrics.enabled). Unlike PlaceholderAPI/SwagAPI above, bStats has no
+             runtime presence to detect on the server — it's SwagHub's own metrics
+             client — so it's compile scope and genuinely SHADED + relocated below
+             (see the maven-shade-plugin <relocation> entry), matching the version
+             already in use by the sibling AdvancedHuntFork project in this workspace.
+        -->
+        <dependency>
+            <groupId>org.bstats</groupId>
+            <artifactId>bstats-bukkit</artifactId>
+            <version>3.1.0</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <!--
+             NOTE: libs/SwagCore-1.0.0.jar is intentionally NOT declared as a dependency here.
+             SwagHub never imports SwagCore classes — it only detects SwagCore at runtime by
+             plugin name (see CompatibilityManager). The jar is kept in libs/ purely as a
+             reference copy for manual coexistence testing on a live test server later.
+        -->
+
+        <!--
+             JUnit 5 (test scope only) — added in build step 2 for SpawnLocationIOTest,
+             the plain-data save/reload round-trip test for the setlobby-restart bug
+             class (§4/§11 step 2). Never shaded; test-scoped dependencies never end up
+             in the packaged jar.
+        -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.10.2</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>21</source>
+                    <target>21</target>
+                    <encoding>UTF-8</encoding>
+                </configuration>
+            </plugin>
+
+            <!--
+                 Explicit, modern surefire version — the old Maven super-POM default
+                 (2.12.4) predates JUnit 5/the JUnit Platform provider and would silently
+                 run zero tests instead of failing loudly. Added alongside the
+                 junit-jupiter test dependency above in build step 2.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <!--
+                                 Build step 8: bStats is the first (and so far only) shaded/
+                                 relocated third-party lib. boostedyaml or others may add more
+                                 <relocation> entries here in a future step.
+                            -->
+                            <relocations>
+                                <relocation>
+                                    <pattern>org.bstats</pattern>
+                                    <shadedPattern>com.SwagDev.SwagHub.libs.bstats</shadedPattern>
+                                </relocation>
+                            </relocations>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+
+        <resources>
+            <!-- Filter yml/config files for ${project.version} substitution -->
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+                <excludes>
+                    <!-- Exclude web files — JS/HTML will use ${...} template literals that
+                         Maven's resource filtering would otherwise mangle. Wired now so the
+                         §7 web editor module can drop files straight into web/ later. -->
+                    <exclude>web/**</exclude>
+                </excludes>
+            </resource>
+            <!-- Copy web assets unfiltered -->
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <includes>
+                    <include>web/**</include>
+                </includes>
+            </resource>
+        </resources>
+    </build>
+</project>

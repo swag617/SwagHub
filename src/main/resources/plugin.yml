@@ -1,0 +1,209 @@
+name: SwagHub
+version: '${project.version}'
+main: com.SwagDev.SwagHub.SwagHub
+api-version: '1.21'
+description: A next-generation hub/lobby core plugin — part of the Swag ecosystem
+author: SwagDev
+depend: [SwagAPI]
+softdepend: [floodgate, PlaceholderAPI, LuckPerms]
+
+# NOTE (step 1 scope): only the root command existed at first, with a stub info/reload
+# executor. Feature subcommands (open, hologram, proxy, portal, scoreboard, ...) will
+# be added to this same "swaghub" command block as their modules are built in later
+# steps — see Gameplan/SwagHub-AI-Prompt-Document (1).md §11 and DECISIONS.md.
+#
+# NOTE (step 2 scope): "/setlobby" and "/lobby" are added as their OWN top-level
+# commands (not "/swaghub" subcommands) — this matches DeluxeHub parity and §6.5
+# point 5's explicit "/spawn vs /lobby are distinct commands... keep both" guidance,
+# which only makes sense if /lobby is a real top-level command in the first place.
+#
+# NOTE (step 3 scope): added "proxy servers" as a "/swaghub" ("/ah") subcommand — the
+# §3.2/§5.10 admin diagnostic that fires a GetServers query against the proxy.
+#
+# NOTE (step 4 scope): added "open <menu> [player]" as a "/swaghub" ("/ah")
+# subcommand — opens a selector menu (§5.3) for the sender, or for [player] if given.
+#
+# NOTE (step 5 scope): added "scoreboard" as a "/swaghub" ("/ah") subcommand — toggles
+# the sender's own scoreboard visibility (§5.4/§5.10).
+#
+# NOTE (step 6 scope): added "/fly", "/gamemode" (+ aliases gmc/gms/gma/gmsp),
+# "/vanish", "/lockchat", and "/clearchat" as their OWN top-level commands — matching
+# "/setlobby"/"/lobby"'s standalone-command precedent from step 2 (NOT "/swaghub"
+# subcommands), per §5.10's own command list keeping these separate from the "/ah"
+# subcommand enumeration.
+#
+# NOTE (step 7 scope): added "hologram <create|delete|addline|setline|removeline|
+# movehere|list>" and "portal <wand|create|delete|list>" as "/swaghub" ("/ah")
+# SUBcommands (§5.10's own command list groups both under "/ah", unlike step 6's
+# fly/gamemode/vanish/lockchat/clearchat, which are standalone top-level commands) —
+# §5.8/§3.3 holograms + proxy portals.
+commands:
+  swaghub:
+    description: SwagHub admin command
+    usage: /swaghub <reload|info|proxy servers|open <menu> [player]|scoreboard|hologram <...>|portal <...>>
+    permission: ""
+    aliases: [ah]
+  setlobby:
+    description: Set the lobby/spawn location to your current position
+    usage: /setlobby
+    permission: swaghub.command.setlobby
+  lobby:
+    description: Teleport to the lobby/spawn location
+    usage: /lobby
+    permission: swaghub.command.lobby
+  fly:
+    description: Toggle flight for yourself or another player
+    usage: /fly [player]
+    permission: swaghub.command.fly
+  gamemode:
+    description: Change your (or another player's) game mode
+    usage: /gamemode <survival|creative|adventure|spectator> [player]
+    permission: swaghub.command.gamemode
+    aliases: [gmc, gms, gma, gmsp]
+  vanish:
+    description: Toggle vanish for yourself or another player
+    usage: /vanish [player]
+    permission: swaghub.command.vanish
+  lockchat:
+    description: Toggle a server-wide chat lock
+    usage: /lockchat
+    permission: swaghub.command.lockchat
+  clearchat:
+    description: Clear the chat
+    usage: /clearchat
+    permission: swaghub.command.clearchat
+
+# NOTE (step 1 scope): only permissions for what's actually implemented right now are
+# declared. The full §9 permission scheme (swaghub.bypass.*, swaghub.item.<id>,
+# swaghub.menu.<id>, swaghub.dashboard.*, etc.) will be added incrementally alongside
+# the modules that use them, not pre-declared here as dead config.
+#
+# NOTE (step 2 scope): added the permissions the spawn/world-protection/join-settings
+# modules actually check — swaghub.command.setlobby, swaghub.command.lobby,
+# swaghub.bypass.lobbydelay, swaghub.bypass.build, swaghub.bypass.pvp. The remaining
+# §9 permissions (swaghub.command.<name>.others, swaghub.item.<id>, swaghub.menu.<id>,
+# swaghub.doublejump, swaghub.dashboard.*, ...) still wait for the modules that need
+# them, per the step 1 policy noted above.
+#
+# NOTE (step 3 scope): added swaghub.command.proxy for the new "/ah proxy servers"
+# admin diagnostic.
+#
+# NOTE (step 4 scope): added swaghub.command.open / swaghub.command.open.others for
+# the new "/ah open <menu> [player]" subcommand. "swaghub.item.<id>" (items.yml) and
+# "swaghub.menu.<id>" (selector-menus/*.yml) are DELIBERATELY NOT listed below —
+# item/menu ids are admin-defined and open-ended, so those two permission FAMILIES
+# are registered programmatically at runtime (one node per configured id, default
+# TRUE) instead of being pre-declared here. See items.yml's and
+# selector-menus/main-menu.yml's own header comments for the exact node format.
+#
+# NOTE (step 5 scope): added swaghub.command.scoreboard (default true — a
+# player-facing toggle, not an admin action, matching swaghub.command.lobby/
+# swaghub.command.open's default-true precedent) for the new "/ah scoreboard" subcommand.
+#
+# NOTE (step 6 scope): added every permission §9 lists for this step's ten features.
+# Three node names are given VERBATIM by §9 and must never be renamed:
+# swaghub.doublejump, swaghub.bypass.commandblocker, swaghub.bypass.chatcooldown.
+#
+# NOTE (step 7 scope): added swaghub.command.hologram and swaghub.command.portal —
+# each gates its own ENTIRE "/ah hologram"/"/ah portal" subtree with one node,
+# mirroring swaghub.command.proxy's single-node-for-the-whole-diagnostic precedent
+# from step 3, rather than a separate node per sub-action.
+#
+# NOTE (step 9 scope): added swaghub.dashboard.view and swaghub.dashboard.edit for the
+# new web editor (§7.2) — GETs under /swagapi/swaghub/api/ require .view, POSTs require
+# .edit. Both default op, matching every other admin-facing permission in this file;
+# neither is a command permission (no new "/ah ..." subcommand was added this step).
+permissions:
+  swaghub.command.reload:
+    description: Reload SwagHub's configuration and modules
+    default: op
+  swaghub.command.info:
+    description: View SwagHub status info
+    default: true
+  swaghub.command.setlobby:
+    description: Set the lobby/spawn location
+    default: op
+  swaghub.command.lobby:
+    description: Teleport to the lobby/spawn location
+    default: true
+  swaghub.bypass.lobbydelay:
+    description: Skip the /lobby teleport delay and move-cancel entirely
+    default: op
+  swaghub.bypass.build:
+    description: Bypass the hub's block break/place protection
+    default: op
+  swaghub.bypass.pvp:
+    description: Bypass the hub's PvP protection (always allowed to fight)
+    default: op
+  swaghub.command.proxy:
+    description: Run the /ah proxy servers admin diagnostic
+    default: op
+  swaghub.command.open:
+    description: Open a SwagHub menu for yourself via /ah open <menu>
+    default: true
+  swaghub.command.open.others:
+    description: Open a SwagHub menu on behalf of another player via /ah open <menu> <player>
+    default: op
+  swaghub.command.scoreboard:
+    description: Toggle your own scoreboard visibility via /ah scoreboard
+    default: true
+  swaghub.doublejump:
+    description: Use the double jump ability
+    default: op
+  swaghub.teleportbow:
+    description: Shoot bows that teleport you to their landing point
+    default: op
+  swaghub.playerhider.alwaysvisible:
+    description: Always stay visible to players in the RANKS_ONLY player-hider state
+    default: op
+  swaghub.command.fly:
+    description: Toggle your own flight via /fly
+    default: op
+  swaghub.command.fly.others:
+    description: Toggle another player's flight via /fly <player>
+    default: op
+  swaghub.command.gamemode:
+    description: Change your own game mode via /gamemode
+    default: op
+  swaghub.command.gamemode.others:
+    description: Change another player's game mode via /gamemode <mode> <player>
+    default: op
+  swaghub.command.vanish:
+    description: Toggle your own vanish via /vanish
+    default: op
+  swaghub.command.vanish.others:
+    description: Toggle another player's vanish via /vanish <player>
+    default: op
+  swaghub.vanish.see:
+    description: See players who are currently vanished
+    default: op
+  swaghub.command.lockchat:
+    description: Toggle the server-wide chat lock via /lockchat
+    default: op
+  swaghub.bypass.lockchat:
+    description: Bypass the chat lock and still send messages while it's active
+    default: op
+  swaghub.bypass.chatcooldown:
+    description: Bypass the per-message chat cooldown
+    default: op
+  swaghub.bypass.commandblocker:
+    description: Bypass the blocked/allowed command list
+    default: op
+  swaghub.command.clearchat:
+    description: Clear the chat via /clearchat
+    default: op
+  swaghub.command.hologram:
+    description: Manage holograms via /ah hologram <create|delete|addline|setline|removeline|movehere|list>
+    default: op
+  swaghub.command.portal:
+    description: Manage proxy portals via /ah portal <wand|create|delete|list>
+    default: op
+  swaghub.dashboard.view:
+    description: View SwagHub's hub-options web editor (read-only)
+    default: op
+  swaghub.dashboard.edit:
+    description: Save changes via SwagHub's hub-options web editor
+    default: op
+  swaghub.admin:
+    description: Full SwagHub admin access (grant via LuckPerms for a wildcard-style parent)
+    default: op

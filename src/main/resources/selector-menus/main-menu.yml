@@ -1,0 +1,97 @@
+# ================================================================================
+#  SwagHub — Selector Menu example  (module: menus — §11 build step 4 / §5.3)
+# ================================================================================
+#
+#  Every ".yml" file placed in this "selector-menus/" folder becomes one menu,
+#  loaded on enable and on "/ah reload". This shipped example ("main-menu.yml")
+#  demonstrates every supported field, including the §10.2-required "3 example
+#  servers with live player counts" hub-out-of-the-box demo.
+#
+#  MENU ID: taken from the "id:" key below if present, otherwise the filename minus
+#  ".yml" is used instead (so this file would be "main-menu" either way). Open it
+#  with "/ah open main-menu" or a "[open-menu] main-menu" action (e.g. from
+#  items.yml's shipped "server-selector" item).
+#
+#  PERMISSION: every menu automatically gets its own permission node,
+#  "swaghub.menu.<id>" (here, "swaghub.menu.main-menu"), registered with a default
+#  of TRUE — every player can open every menu by default; revoke a specific menu for
+#  a group/rank via your permissions plugin the same way join-item permissions work
+#  (see items.yml's header comment) — there is no separate "permission:" config key.
+#
+#  LIVE PLACEHOLDERS: "%swaghub_count_<server>%" / "%swaghub_count_total%" resolve
+#  live player counts from the proxy service (§3, build step 3) — "<server>" must
+#  exactly match a server name configured on your proxy AND listed under
+#  "proxy.servers" in config.yml, or the count will always read 0.
+#  "%swaghub_status_<server>%" resolves to a colored "Online"/"Offline" indicator
+#  (online = the proxy has answered at least one PlayerCount query for that server
+#  since this server started; see ProxyService#getCachedCounts()). Any slot whose
+#  name/lore contains one of these is automatically re-rendered every
+#  "refresh-interval-ticks" for as long as at least one player has this menu open.
+#
+#  Slots also run through PlaceholderAPI (if installed) for any OTHER plugin's
+#  placeholders in the same name/lore text.
+title: "<gradient:#7b2ff7:#f107a3><bold>Select a Server</bold></gradient>"
+rows: 3
+
+# Refresh every slot containing a live placeholder token every 5 seconds (100 ticks)
+# while at least one player has this menu open. Set to 0 to disable auto-refresh.
+refresh-interval-ticks: 100
+
+# Played to the viewer the moment the menu opens — any org.bukkit.Sound enum name.
+open-sound: BLOCK_NOTE_BLOCK_PLING
+
+# Fills every slot that isn't explicitly listed under "slots:" below with this item
+# (purely decorative — has no actions). Remove this whole block for empty/air filler.
+filler:
+  material: GRAY_STAINED_GLASS_PANE
+  name: " "
+
+slots:
+  11:
+    material: GRASS_BLOCK
+    name: "<green><bold>Survival</bold></green>"
+    lore:
+      - ""
+      - "<gray>Status: %swaghub_status_survival%</gray>"
+      - "<gray>Players: <white>%swaghub_count_survival%</white></gray>"
+      - ""
+      - "<yellow>Click to connect!</yellow>"
+    actions:
+      - "[server] survival"
+
+  13:
+    material: NETHER_STAR
+    name: "<light_purple><bold>Skyblock</bold></light_purple>"
+    lore:
+      - ""
+      - "<gray>Status: %swaghub_status_skyblock%</gray>"
+      - "<gray>Players: <white>%swaghub_count_skyblock%</white></gray>"
+      - ""
+      - "<yellow>Click to connect!</yellow>"
+    glow: true
+    actions:
+      - "[server] skyblock"
+
+  15:
+    material: TNT
+    name: "<red><bold>Factions</bold></red>"
+    lore:
+      - ""
+      - "<gray>Status: %swaghub_status_factions%</gray>"
+      - "<gray>Players: <white>%swaghub_count_factions%</white></gray>"
+      - ""
+      - "<yellow>Click to connect!</yellow>"
+    actions:
+      - "[server] factions"
+
+  22:
+    material: PLAYER_HEAD
+    name: "<aqua><bold>Network Total</bold></aqua>"
+    lore:
+      - ""
+      - "<gray>Players online across the whole network:</gray>"
+      - "<white>%swaghub_count_total%</white>"
+    # Example of the base64-texture skull format (a generic "globe/network" head skin).
+    # Replace with your own — get one from any Minecraft skull-texture generator site.
+    skull:
+      texture: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZXhhbXBsZSJ9fX0="

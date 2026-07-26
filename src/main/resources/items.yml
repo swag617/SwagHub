@@ -1,0 +1,77 @@
+# ================================================================================
+#  SwagHub — Join Items  (module: join-items — §11 build step 4 / §5.2)
+# ================================================================================
+#
+#  Every entry under "items:" below is given to players as a hotbar item the moment
+#  they're in a hub world (on join, on respawn, and when changing INTO a hub world —
+#  never when leaving one). Defaults to ENABLED only when "server-role: hub" in
+#  config.yml (§6.2 lists "join items" among the hub-behavior modules that default
+#  OFF on server-role: game) — force it with "modules.join-items: true/false" under
+#  config.yml's "modules:" section if you want to override that default.
+#
+#  PERMISSIONS: every item id below automatically gets its own permission node,
+#  "swaghub.item.<id>" (e.g. "swaghub.item.server-selector"), registered with a
+#  default of TRUE — meaning every player has every join item by default. Revoke a
+#  specific item for a group/rank via your permissions plugin (e.g. LuckPerms) by
+#  negating that one node; the rest of that player's items are unaffected. This
+#  cannot be a free-form "permission:" key in the item's own config below — item ids
+#  are admin-defined, so the node is always derived from the id itself.
+#
+#  Items are non-movable and non-droppable: SwagHub tags every item it gives with an
+#  internal id tag and cancels any inventory click/drag/drop that would move or drop
+#  a tagged item. They are NEVER identified by material or name — only by that tag —
+#  so they can safely share a material/name with anything else in a player's
+#  inventory.
+#
+#  FORMAT (every field except "material" and "slot" is optional):
+#    <item-id>:
+#      material: COMPASS              # a valid org.bukkit.Material name
+#      slot: 4                        # hotbar slot, 0-8 (REQUIRED)
+#      amount: 1                     # stack size, 1-64 (default 1)
+#      name: "<gradient:#7b2ff7:#f107a3>Server Selector</gradient>"   # MiniMessage
+#      lore:
+#        - "<gray>Click to choose a server!</gray>"
+#      custom-model-data: 1001       # legacy int CMD (still supported in 1.21.x)
+#      glow: true                    # hidden-enchant glow trick, no stat change
+#      skull:                        # only used when material: PLAYER_HEAD
+#        texture: "<base64 Mojang-signed 'textures' property value>"
+#        owner-name: "Notch"         # OR resolve a skin by a real player's name
+#        owner-uuid: "..."           # OR resolve a skin by a real player's UUID
+#      actions:                      # run through SwagHub's action system (§5.9)
+#        - "[open-menu] main-menu"
+#
+#  A malformed entry (missing/invalid "material", missing/out-of-range "slot", etc.)
+#  logs one specific warning naming the item id and the problem, and is skipped —
+#  every other item still loads and is given normally (§10.4).
+#
+#  BEDROCK NOTE (§8.2): custom-model-data only renders for Bedrock/Geyser players if
+#  the server has a matching Bedrock resource pack mapped. Every item's material +
+#  name/lore still display correctly without one — design your items so they look
+#  fine without custom-model-data too.
+
+items:
+  server-selector:
+    material: COMPASS
+    slot: 4
+    amount: 1
+    name: "<gradient:#7b2ff7:#f107a3><bold>Server Selector</bold></gradient>"
+    lore:
+      - "<gray>Right-click to choose a server!</gray>"
+    glow: true
+    actions:
+      - "[open-menu] main-menu"
+
+  # §11 build step 6 example — demonstrates the new "[cycle-player-hider]" action
+  # (§5.7): right-clicking advances the player's own visibility state one step
+  # (ALL_VISIBLE -> HIDE_OTHERS -> RANKS_ONLY -> back). Requires the player-hider
+  # module to be enabled.
+  hider-toggle:
+    material: ENDER_EYE
+    slot: 8
+    amount: 1
+    name: "<gradient:#7b2ff7:#f107a3><bold>Player Visibility</bold></gradient>"
+    lore:
+      - "<gray>Right-click to cycle who you can see!</gray>"
+    glow: true
+    actions:
+      - "[cycle-player-hider]"

@@ -1,0 +1,527 @@
+# ================================================================================
+#  SwagHub — core configuration
+#  Part of the Swag plugin ecosystem. Requires SwagAPI to be installed and enabled.
+# ================================================================================
+#
+#  This file (config.yml) holds core settings: server role and the compatibility/
+#  auto-yield system. As feature modules are implemented in later build steps, each
+#  gets its own file (selector-menus/, scoreboard.yml, tablist.yml, holograms.yml,
+#  portals.yml, items.yml, announcements.yml) plus a "modules.<key>: true/false"
+#  toggle entry appended under the "modules:" section below.
+#
+#  Step 1 note: no feature modules exist yet, so "modules:" is currently empty.
+#  It is documented here so later steps only need to add lines, not redesign the
+#  section.
+#
+#  Step 2 note: the first three feature modules now exist — "spawn", "world-protection",
+#  and "join-settings" (settings for each are documented in their own sections further
+#  down this file). "modules:" is still left EMPTY on purpose: each module's own coded
+#  default (which for world-protection/join-settings depends on server-role above) only
+#  takes effect while its key is absent here. Uncomment/add a line under "modules:" only
+#  if you want to force a module on or off regardless of its built-in default.
+#
+#  Step 3 note: a fourth module, "proxy" (§3 — the bungeecord:main proxy service),
+#  now exists too. Like "spawn", it always defaults to ENABLED regardless of
+#  server-role (§6.2 lists "proxy service" as a utility module that stays on for both
+#  hub and game roles) — its "modules:" key stays absent below for the same reason.
+#
+#  Step 4 note: two more modules exist now — "join-items" (§5.2, its own settings
+#  file is items.yml — see that file's own header comment) and "menus" (§5.3, the
+#  server-selector/menu engine, its own settings live one-file-per-menu under the
+#  selector-menus/ folder). "join-items" defaults to ENABLED only when
+#  server-role: hub (§6.2 lists "join items" in the hub-behavior default-OFF-on-game
+#  list); "menus" always defaults to ENABLED regardless of server-role, same as
+#  "proxy" (§6.2 lists "custom menus" as a utility module that stays on for both
+#  hub and game roles). Neither key needs to appear under "modules:" below unless
+#  you want to force it against its own default.
+#
+#  Step 5 note: three more modules exist now — "scoreboard" (§5.4, own settings file
+#  scoreboard.yml), "tablist" (§5.5, own settings file tablist.yml), and
+#  "announcements" (§5.6, own settings file announcements.yml). All three default to
+#  ENABLED only when server-role: hub (§6.2 lists scoreboard/tablist/announcements in
+#  the hub-behavior default-OFF-on-game list), and are also the exact three module
+#  keys SwagCore's own scoreboard/tablist/announcements systems conflict with (see
+#  "compatibility.overrides" below) — auto-yield engages for these three out of the
+#  box whenever SwagCore is also installed. All three are gated by "hub-worlds" below
+#  (see DECISIONS.md Step 5 for why this was chosen over "every world"): content is
+#  never shown/run in a world that isn't listed there (or ALL worlds, if the list is
+#  left empty). None of the three needs a "modules:" entry below unless you want to
+#  force it against its own default.
+#
+#  Step 6 note: ten more modules exist now — "double-jump" (§5.7), "launchpads"
+#  (§5.7, own settings file launchpads.yml, ALWAYS enabled regardless of server-role —
+#  a utility module like proxy/menus), "teleport-bow" (§5.7), "player-hider" (§5.7),
+#  "fly"/"gamemode"/"vanish" (§5.10 — all three are compat-reserved: they yield to
+#  SwagCore's and EssentialsX's own equivalents), "lockchat" (§5.1, bundles chat lock +
+#  chat cooldown + the command blocker — deferred from step 2), "clearchat" (§5.1,
+#  compat-reserved, yields to EssentialsX — deliberately a SEPARATE module from
+#  "lockchat", see ChatControlsModule's javadoc), and "anti-wdl" (§5.1, deferred from
+#  step 2). Every one of these except "launchpads" defaults to ENABLED only when
+#  server-role: hub. See DECISIONS.md Step 6 for the full reasoning behind each
+#  default and the double-jump/fly flight stand-down design.
+#
+#  Step 7 note: two more modules exist now — "holograms" (§5.8, own settings file
+#  holograms.yml, ALWAYS enabled regardless of server-role — a utility module like
+#  proxy/menus/launchpads; also compat-reserved, yields to SwagCore's own hologram
+#  system) and "portals" (§3.3/§5.8, own settings file portals.yml, ALWAYS enabled
+#  regardless of server-role and NEVER auto-yielded to any plugin — §6.3's do-not-
+#  yield list explicitly names portals). Both are fully self-contained in their own
+#  yml files, exactly like items.yml/launchpads.yml — nothing of theirs lives in this
+#  file beyond this comment block and their "modules:" toggle (left absent below, same
+#  as every other utility module). Neither is gated by "hub-worlds" above — see
+#  DECISIONS.md Step 7 for why (short version: both are admin-PLACED at specific
+#  chosen locations, not world-wide behaviors).
+#
+#  Step 9 note: one more module exists now — "webeditor" (§7, the SwagAPI IWebService-
+#  backed hub-options web editor at /swagapi/swaghub/). ALWAYS defaults to ENABLED
+#  regardless of server-role above — a utility module like proxy/menus/launchpads/
+#  holograms/portals. NEVER auto-yielded to any plugin (it's not a hub-visual-identity
+#  feature the way scoreboard/tablist/announcements/holograms are — nothing else in
+#  the Swag ecosystem exposes THIS plugin's own config over HTTP). Exactly like
+#  holograms/portals above, it is fully self-contained — its own request handlers and
+#  bundled web/editor/ frontend assets are the only thing that reads/writes it, and it
+#  has NO settings of its own beyond enable/disable: nothing of its own lives in this
+#  file beyond this comment block and its "modules:" toggle (left absent below, same
+#  as every other utility module). See DECISIONS.md Step 9 for exactly which of the
+#  config files above (scoreboard.yml/tablist.yml/announcements.yml, plus this file's
+#  own server-role/hub-worlds/modules/compatibility settings) it can read and write,
+#  and why holograms.yml/portals.yml/items.yml/selector-menus/ don't get an editor yet.
+#
+#  Patch 1 note (§8 Bedrock support — see DECISIONS.md's Patch 1 section): two new
+#  settings exist now — "double-jump.bedrock" (further down, in the double-jump
+#  section) and "menus.bedrock-forms" (new section below "hub-worlds"). Both default
+#  to the current, pre-patch behavior (double jump works for Bedrock players exactly
+#  like Java players; menus render as the standard chest GUI for everyone). Neither
+#  needs a "modules:" entry — they're per-platform BEHAVIOR toggles inside modules
+#  that already exist, not new modules of their own.
+
+# --------------------------------------------------------------------------------
+# Server role (see §6.2 of the design doc)
+# --------------------------------------------------------------------------------
+# hub  - this server is the network's hub/lobby. All modules follow their own
+#        individual toggle below (or their built-in default if not listed).
+# game - this server is a "main"/game server that SwagCore (or similar) already
+#        runs full-fat on. Hub-behavior modules (world protections, forced
+#        spawn-on-join, join items, clear-inventory, double jump, teleport bow,
+#        player hider, anti-WDL, chat lock/cooldown, clearchat, scoreboard, tablist,
+#        announcements, fly/gamemode/vanish commands) default OFF. Utility modules
+#        unique to SwagHub (holograms, custom menus, proxy service, portals,
+#        launchpads) default ON. Every default can still be overridden individually
+#        via "modules:" below — server-role only changes defaults, it never
+#        hard-locks anything.
+server-role: hub
+
+# --------------------------------------------------------------------------------
+# Per-module enable/disable toggles.
+# --------------------------------------------------------------------------------
+# Format: modules.<module-key>: true/false
+# If a module-key is omitted here, the module's own coded default is used (which
+# itself may depend on server-role above). No modules are implemented yet in this
+# build step, so this section is intentionally empty — future steps append here.
+modules: {}
+
+# --------------------------------------------------------------------------------
+# Compatibility / auto-yield system (see §6.3 of the design doc)
+# --------------------------------------------------------------------------------
+compatibility:
+  # When true, SwagHub automatically disables ("yields") any module that overlaps
+  # with a plugin from the conflict registry below, if that plugin is installed
+  # and enabled. Exactly one console line is logged per yielded module.
+  auto-yield: true
+
+  # Per-module override. Takes priority over auto-yield in both directions.
+  #   auto     - default; follow auto-yield logic (yield if a conflicting plugin
+  #              is detected, otherwise run based on the module's own toggle).
+  #   enabled  - force this module ON even if a conflicting plugin is present.
+  #   disabled - force this module OFF regardless of conflicts.
+  # Every entry below is commented out — uncomment and change only what you need.
+  overrides:
+    # scoreboard: auto
+    # tablist: auto
+    # announcements: auto
+    # join-quit-messages: auto
+    # holograms: auto
+    # vanish: auto
+    # fly: auto
+    # gamemode: auto
+    # clearchat: auto
+
+    # ---- Recommended on the HUB server only, when SwagCore is ALSO installed there ----
+    # SwagHub owns the hub's visual identity; SwagCore keeps shared network systems.
+    # scoreboard: enabled          # hub-specific scoreboard
+    # tablist: enabled             # hub-specific tablist
+    # announcements: enabled       # hub-specific broadcasts
+    # join-quit-messages: enabled  # hub-specific join/quit experience
+    # vanish: auto      -> stays yielded to SwagCore (DB-persisted, network-wide)
+    # holograms: auto   -> stays yielded to SwagCore (one hologram system network-wide)
+    #
+    # On game servers, leave everything as "auto" (pure auto-yield) with server-role: game.
+
+  # Shipped conflict registry: which SwagHub modules yield to which detected plugins.
+  # The built-in defaults (verified against SwagCore-1.0.0.jar and EssentialsX's known
+  # command set) are compiled into SwagHub and don't need to be listed here. This
+  # section only lets you EXTEND the registry with your own plugin/module mappings —
+  # entries here are merged (unioned) with the built-in defaults, not replacing them.
+  #
+  # Example:
+  # conflicts:
+  #   SomeOtherPlugin: [scoreboard, tablist]
+  conflicts: {}
+
+# --------------------------------------------------------------------------------
+# Hub world whitelist
+# --------------------------------------------------------------------------------
+# Every hub behavior (protections, join settings, etc.) is enforced only in the
+# worlds listed here, via the shared HubWorldUtil.isHubWorld(...) check (§4).
+# Leave empty to apply to ALL worlds.
+hub-worlds: []
+
+# --------------------------------------------------------------------------------
+# Bedrock / Floodgate support (§8 of the design doc — Patch 1, Fix 1)
+# --------------------------------------------------------------------------------
+# No "modules:" entry — detection itself (BedrockService) always runs; the setting
+# below is a single behavior toggle inside the existing "menus" module, not a module
+# of its own. See "double-jump.bedrock" further down for the other §8.2 per-platform
+# toggle, inside the double-jump section it belongs to.
+menus:
+  # §8.2: chest-GUI selector menus already work correctly for Bedrock players through
+  # Geyser out of the box — this is OFF by default on purpose. Setting this to true
+  # requests native Bedrock SimpleForm rendering instead, which is NOT implemented
+  # yet — enabling it only produces one console warning on enable/reload; menus keep
+  # rendering as standard chest GUIs for everyone regardless. A documented,
+  # not-yet-implemented placeholder for a future forms renderer (§8.2's own explicit
+  # allowance for shipping this toggle ahead of the feature).
+  bedrock-forms: false
+
+# ================================================================================
+#  Spawn / Lobby  (module: spawn — §11 build step 2)
+# ================================================================================
+# This module always defaults to ENABLED regardless of server-role above — see
+# DECISIONS.md's Step 2 section for why (short version: /setlobby, /lobby, and the
+# void-fall safety net are utility behavior, never named in server-role's
+# "hub-behavior modules default OFF on game role" list, and §6.3 explicitly
+# requires void-fall teleport to keep working even when SwagCore is also
+# installed).
+#
+# Only one global lobby location is supported in v1 (no per-world lobbies) — set it
+# with "/setlobby" while standing where you want players to land. It is written to
+# data/spawn.yml IMMEDIATELY when you run /setlobby (never only on shutdown), which
+# is the exact DeluxeHub bug this plugin was built to avoid — see §4.
+spawn:
+  # How long (in game ticks — 20 ticks = 1 second) "/lobby" waits before
+  # teleporting. 0 = teleport instantly with no countdown message.
+  lobby-teleport-delay-ticks: 60
+
+  # If true, moving during the "/lobby" countdown cancels the teleport. Players
+  # with "swaghub.bypass.lobbydelay" always teleport instantly regardless of this.
+  cancel-on-move: true
+
+  # Teleport every player to the lobby location the instant they join the server.
+  spawn-on-join: true
+
+  # If a player falls into the void in a hub-world (see hub-worlds above), teleport
+  # them back to the lobby instead of letting them take void damage/die.
+  spawn-on-void-fall: true
+
+  # Send players back to the lobby location on respawn instead of their bed/anchor.
+  spawn-on-respawn: true
+
+# ================================================================================
+#  World Protection  (module: world-protection — §11 build step 2)
+# ================================================================================
+# Defaults to ENABLED when server-role: hub, and OFF when server-role: game (§6.2 —
+# "world protections" is explicitly one of the hub-behavior modules that yields to
+# whatever the game server's own plugin, e.g. SwagCore, already handles). Every
+# check below only applies in the worlds listed in hub-worlds above.
+world-protection:
+  deny-block-break: true
+  deny-block-place: true
+  disable-hunger: true
+  disable-fall-damage: true
+
+  # Master switch: if true, players take NO damage of any kind in hub worlds. This
+  # supersedes disable-fall-damage/disable-pvp below in practice — leave those
+  # toggles set too anyway, for documentation/clarity if this master switch is
+  # ever turned back off.
+  disable-all-damage: false
+
+  # PvP is off by default in the hub. "swaghub.bypass.pvp" always allows PvP
+  # regardless of this setting and regardless of zones below.
+  disable-pvp: true
+
+  # Config-defined PvP zone exceptions — a simple two-corner cuboid per zone (no
+  # wand/selection UI; that's a separate, later build step for §3.3's proxy
+  # portals). Players fighting fully inside ANY listed zone can PvP even while
+  # disable-pvp is true elsewhere in the same world.
+  # Example:
+  # pvp-zones:
+  #   - name: "arena"
+  #     world: "world"
+  #     corner1: { x: 100, y: 60, z: 100 }
+  #     corner2: { x: 150, y: 80, z: 150 }
+  pvp-zones: []
+
+  # Locks the weather to clear (or rain, if clear-weather: false) in hub worlds.
+  lock-weather: true
+  clear-weather: true
+
+  # Locks the time-of-day to fixed-time (0 = dawn, 6000 = noon, 12000 = dusk,
+  # 18000 = midnight) in hub worlds.
+  lock-time: true
+  fixed-time: 6000
+
+  # Cancels natural/spawner mob spawns in hub worlds. Mobs spawned by other
+  # plugins via SpawnReason.CUSTOM are still let through (e.g. NPC plugins).
+  deny-mob-spawning: true
+
+  deny-item-drop: true
+  deny-item-pickup: true
+  deny-leaf-decay: true
+  deny-fire-spread: true
+  deny-block-burn: true
+
+  # Prevents TNT from ever priming/exploding in hub worlds.
+  deny-tnt: true
+
+# ================================================================================
+#  Join Settings  (module: join-settings — §11 build step 2)
+# ================================================================================
+# Defaults to ENABLED when server-role: hub, and OFF when server-role: game (§6.2 —
+# "clear-inventory" is explicitly named in the hub-behavior default-OFF list on
+# game servers). Everything below only applies once the player is in a hub world
+# (see hub-worlds above) — including after any spawn-on-join teleport has run.
+join-settings:
+  clear-inventory: true
+
+  set-gamemode: true
+  gamemode: ADVENTURE
+
+  heal-and-feed: true
+
+  join-firework: true
+
+  # First-join extras: a private welcome message (see messages.yml's
+  # "first-join-message" key) plus an optional list of actions run through the
+  # same action system as everything else in SwagHub (§5.9) — add [message],
+  # [console], [player], [delay], [permission-check], [chance] lines here as more
+  # action types are registered in later build steps.
+  first-join:
+    actions: []
+    # actions:
+    #   - "[delay] 20"
+    #   - "[message] <gradient:#7b2ff7:#f107a3>Welcome to the network, %player%!</gradient>"
+
+# ================================================================================
+#  Proxy Service  (module: proxy — §11 build step 3)
+# ================================================================================
+# Utility module — defaults to ENABLED regardless of server-role above (§6.2 lists
+# "proxy service" among the utility modules that stay on for BOTH hub and game
+# roles, unlike world-protection/join-settings above). Enable/disable this whole
+# module via "modules.proxy: true/false" under "modules:" near the top of this file
+# — the design spec calls this toggle "proxy.enabled"; SwagHub folds it into the
+# same "modules.<key>" mechanism every other module already uses instead of adding a
+# second, inconsistent per-module enable convention (see DECISIONS.md's Step 3
+# section for the full reasoning). This section only holds proxy's own settings.
+#
+# HOW IT WORKS (§3.1): all proxy communication rides the plugin messaging channel
+# "bungeecord:main" (registered here under its legacy name "BungeeCord"). This is
+# the SAME channel BungeeCord has always used, and Velocity answers it natively via
+# its built-in BungeeCord-compatibility layer — so this one implementation works
+# identically against BOTH proxies with ZERO proxy-side plugin required. Velocity's
+# side of this is controlled by "bungee-plugin-message-channel" in velocity.toml,
+# which defaults to true/enabled already — a stock Velocity install needs no
+# changes at all for this to work. If you've deliberately disabled that setting on
+# Velocity, re-enable it (or this module has nothing to talk to).
+proxy:
+  # How often (in seconds) to poll the proxy for player counts (PlayerCount) and the
+  # server list (GetServers). Per §3.2, plugin messages can only be sent through a
+  # currently-connected player's channel — if zero players are online when a poll
+  # cycle would run, that cycle is skipped entirely (not logged as an error, not an
+  # empty/zeroed cache) and the last-known values keep being served until someone
+  # rejoins and a poll actually goes out.
+  poll-interval-seconds: 10
+
+  # Backend server names to poll individual player counts for. These must exactly
+  # match the server names configured on the proxy itself (Velocity's velocity.toml
+  # "[servers]" block, or BungeeCord's config.yml "listeners/servers" section) — the
+  # proxy has no way to answer "PlayerCount" for a name it doesn't recognize. The
+  # network-wide total is always polled too, regardless of this list, and is
+  # available via ProxyService#getCachedTotalCount() (%swaghub_count_total% once the
+  # §8 PlaceholderAPI expansion lands in a later build step).
+  # Example:
+  # servers:
+  #   - hub
+  #   - survival
+  #   - skyblock
+  servers: []
+
+  # How long (in ticks — 20 ticks = 1 second) to wait after sending a "Connect"
+  # request before concluding it silently failed. The BungeeCord/Velocity proxy
+  # protocol has no explicit failure acknowledgement on this channel — the only
+  # observable symptom of a failed Connect (e.g. the target server name is unknown,
+  # or that backend is offline) is the player still being present on THIS server
+  # after the timeout. When that happens, the "server-offline" message (see
+  # messages.yml) is sent automatically.
+  connect-timeout-ticks: 40
+
+# ================================================================================
+#  Join Items  (module: join-items — §11 build step 4)
+# ================================================================================
+# Defaults to ENABLED when server-role: hub, and OFF when server-role: game (§6.2 —
+# "join items" is explicitly named in the hub-behavior default-OFF list on game
+# servers), same default-by-role pattern as world-protection/join-settings above.
+#
+# This module has NO settings in config.yml itself — every item is fully defined in
+# its own file, items.yml (material, slot, name, lore, custom model data, head
+# texture, glow, and actions). See items.yml's own header comment for the full
+# format and the "swaghub.item.<id>" permission convention (§9).
+#
+# Items only ever get given to a player while they're in a hub world (see
+# hub-worlds above) — on join, on respawn, and when changing INTO a hub world
+# (never when leaving one).
+
+# ================================================================================
+#  Menus / Server Selector  (module: menus — §11 build step 4)
+# ================================================================================
+# ALWAYS defaults to ENABLED regardless of server-role above (§6.2 lists "custom
+# menus" among the utility modules that stay on for BOTH hub and game roles, same as
+# "proxy" above) — its "modules:" key stays absent for the same reason spawn/proxy's do.
+#
+# This module also has NO settings in config.yml itself — every menu is its own YAML
+# file under the "selector-menus/" folder (one file = one menu). A working example,
+# "selector-menus/main-menu.yml", ships by default with 3 example backend servers
+# using "[server] <name>" actions and live "%swaghub_count_<server>%" /
+# "%swaghub_count_total%" / "%swaghub_status_<server>%" placeholders (§10.2) — open
+# it in-game with "/ah open main-menu", or via the shipped items.yml "server-selector"
+# join item. See that file's own header comment for the full menu YAML format, the
+# "swaghub.menu.<id>" permission convention (§9), and how the live-placeholder
+# refresh interval works.
+#
+# Menus are openable from anywhere the action system runs (join items, other menus'
+# slot actions, "/ah open <menu> [player]") via the "[open-menu] <menu-id>" action
+# type; "[close-menu]" closes whatever a player currently has open.
+
+# ================================================================================
+#  Double Jump  (module: double-jump — §11 build step 6 / §5.7)
+# ================================================================================
+# Defaults to ENABLED when server-role: hub, OFF when server-role: game. Requires
+# "swaghub.doublejump" (default op). A bounded handful of scalar settings, same shape
+# as world-protection's own section above — see DoubleJumpModule's javadoc for why
+# this doesn't get its own file the way launchpads/items do.
+double-jump:
+  power: 1.4
+  height: 1.2
+  particle: CLOUD
+  sound: ENTITY_BAT_TAKEOFF
+
+  # §8.2 (Patch 1, Fix 1): double jump uses the same client-side double-tap-space
+  # input as vanilla flight, which Bedrock clients relay through Geyser — this works
+  # for Bedrock players by default (true). Set to false to disable double jump for
+  # Bedrock players specifically (Java players are never affected either way) if
+  # Bedrock input proves unreliable for this on your network.
+  bedrock: true
+
+  # Config-defined cuboids where the double-jump LAUNCH EFFECT is disabled (the
+  # underlying flight grant itself is untouched — see DoubleJumpModule's javadoc for
+  # why region-gating happens at launch time, not continuously). Same two-corner
+  # cuboid shape as world-protection's pvp-zones, no wand/selection UI.
+  # Example:
+  # regions:
+  #   - name: "no-jump-lobby-roof"
+  #     world: "world"
+  #     corner1: { x: -20, y: 80, z: -20 }
+  #     corner2: { x: 20, y: 120, z: 20 }
+  regions: []
+
+# ================================================================================
+#  Teleport Bow  (module: teleport-bow — §11 build step 6 / §5.7)
+# ================================================================================
+# Defaults to ENABLED when server-role: hub, OFF when server-role: game. Requires
+# "swaghub.teleportbow" (default op). No settings beyond enable/disable + the
+# permission — any bow shot by a permitted player in a hub world becomes a teleport
+# arrow for that one shot (§5.7 doesn't define a special item for this).
+
+# ================================================================================
+#  Player Hider  (module: player-hider — §11 build step 6 / §5.7)
+# ================================================================================
+# Defaults to ENABLED when server-role: hub, OFF when server-role: game. Cycled via
+# the "[cycle-player-hider]" action (see items.yml's "hider-toggle" example item) —
+# ALL_VISIBLE -> HIDE_OTHERS -> RANKS_ONLY -> back to ALL_VISIBLE. RANKS_ONLY hides
+# everyone WITHOUT "swaghub.playerhider.alwaysvisible" (default op) from the viewer.
+player-hider:
+  # Minimum seconds between cycles for the same player — a single small scalar, so it
+  # lives directly here rather than earning its own file.
+  cooldown-seconds: 3
+
+# ================================================================================
+#  Fly / Gamemode / Vanish  (modules: fly, gamemode, vanish — §11 build step 6 / §5.10)
+# ================================================================================
+# All three default to ENABLED only when server-role: hub, and are compat-reserved —
+# see "compatibility.overrides" above (fly/gamemode/vanish/clearchat) — they yield to
+# SwagCore's/EssentialsX's own equivalents automatically when either is installed.
+# None of the three has its own settings beyond enable/disable + their permissions
+# (swaghub.command.fly[.others], swaghub.command.gamemode[.others],
+# swaghub.command.vanish[.others], swaghub.vanish.see — see plugin.yml).
+
+# ================================================================================
+#  Chat Controls  (module: lockchat — §11 build step 6 / §5.1, deferred from step 2)
+# ================================================================================
+# Defaults to ENABLED when server-role: hub, OFF when server-role: game. Bundles
+# "/lockchat", a per-player chat cooldown, and a command whitelist/blacklist into ONE
+# module — see ChatControlsModule's javadoc for why. "locked" itself is NOT a config
+# key — it's pure runtime state toggled by "/lockchat", always starting unlocked on
+# enable/reload (never resumed from a stale config value across a restart).
+lockchat:
+  # Minimum seconds between chat messages per player. 0 disables the cooldown check
+  # entirely. "swaghub.bypass.chatcooldown" always bypasses this.
+  cooldown-seconds: 0
+
+  command-blocker:
+    # blacklist - commands in the list below are blocked, everything else is allowed.
+    # whitelist - ONLY commands in the list below are allowed, everything else is blocked.
+    mode: blacklist
+
+    # Base command names only (no leading "/", no arguments) — e.g. "gamemode" also
+    # blocks "/gamemode:gamemode" plugin-qualified variants. "swaghub.bypass.commandblocker"
+    # always bypasses this.
+    commands: []
+
+# ================================================================================
+#  Clear Chat  (module: clearchat — §11 build step 6 / §5.1, deferred from step 2)
+# ================================================================================
+# Defaults to ENABLED when server-role: hub, OFF when server-role: game (kept
+# consistent with "lockchat" above so the whole chat feature bundle behaves
+# coherently by role — see ClearChatModule's javadoc). Compat-reserved — yields to
+# EssentialsX's own "/clearchat" automatically when it's installed.
+clearchat:
+  # How many blank lines "/clearchat" sends.
+  lines: 100
+
+  # If true, clears chat for every online player. If false, only for whoever ran the
+  # command (or the console, if run from console — in which case this toggle has no
+  # effect either way, since there's no "everyone but the console" distinction to make).
+  clear-for-everyone: true
+
+# ================================================================================
+#  Anti-WorldDownloader  (module: anti-wdl — §11 build step 6 / §5.1, deferred from step 2)
+# ================================================================================
+# Defaults to ENABLED when server-role: hub, OFF when server-role: game. Detects the
+# WorldDownloader mod registering its plugin-messaging channel and either kicks or
+# warns the player — never both, never silently ignored.
+anti-wdl:
+  # kick - disconnects the player immediately (see messages.yml's "wdl-kicked").
+  # warn - sends a chat warning instead and takes no other action (see "wdl-warned").
+  action: kick
+
+# ================================================================================
+#  Metrics  (§11 build step 8 / §5.11)
+# ================================================================================
+# SwagHub sends anonymous usage statistics (server count, online player count,
+# software/version, and similar non-identifying data — never player names, IPs, or
+# anything else specific to your server or players) to bStats (https://bstats.org)
+# via a shaded/relocated bStats client. This has NO "modules:" entry — unlike every
+# feature module above, bStats' own Metrics class self-manages its lifecycle/task
+# once constructed; there is no enable/disable module boundary to speak of. Set to
+# false to opt out entirely.
+metrics:
+  enabled: true
