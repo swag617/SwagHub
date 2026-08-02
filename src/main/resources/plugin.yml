@@ -37,10 +37,17 @@ softdepend: [floodgate, PlaceholderAPI, LuckPerms]
 # SUBcommands (§5.10's own command list groups both under "/ah", unlike step 6's
 # fly/gamemode/vanish/lockchat/clearchat, which are standalone top-level commands) —
 # §5.8/§3.3 holograms + proxy portals.
+#
+# NOTE (network-stats addition): added "networkstats <server> <player>" as a "/swaghub"
+# ("/ah") subcommand — an admin diagnostic for NetworkStatsModule, which reads another
+# server's player stats over HTTP via SwagAPI's registerServiceModule (shared-secret
+# auth), never a direct database connection. Deliberately kept isolated from each
+# server's own database so e.g. an SMP server and a Factions server never share economy
+# data just because the hub wants to display both.
 commands:
   swaghub:
     description: SwagHub admin command
-    usage: /swaghub <reload|info|proxy servers|open <menu> [player]|scoreboard|hologram <...>|portal <...>>
+    usage: /swaghub <reload|info|proxy servers|open <menu> [player]|scoreboard|hologram <...>|portal <...>|networkstats <server> <player>>
     permission: ""
     aliases: [ah]
   setlobby:
@@ -197,6 +204,9 @@ permissions:
     default: op
   swaghub.command.portal:
     description: Manage proxy portals via /ah portal <wand|create|delete|list>
+    default: op
+  swaghub.command.networkstats:
+    description: Query another server's player stats via /ah networkstats <server> <player>
     default: op
   swaghub.dashboard.view:
     description: View SwagHub's hub-options web editor (read-only)

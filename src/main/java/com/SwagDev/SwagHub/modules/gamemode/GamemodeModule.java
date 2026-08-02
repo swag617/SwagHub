@@ -9,8 +9,11 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.PluginCommand;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -29,10 +32,11 @@ import java.util.Map;
  * {@code a}/{@code sp} (case-insensitive), for parity with vanilla's own
  * {@code /gamemode} short-form support.</p>
  */
-public class GamemodeModule extends Module implements CommandExecutor {
+public class GamemodeModule extends Module implements CommandExecutor, TabCompleter {
 
     private static final String PERMISSION_SELF = "swaghub.command.gamemode";
     private static final String PERMISSION_OTHERS = "swaghub.command.gamemode.others";
+    private static final List<String> MODE_NAMES = List.of("survival", "creative", "adventure", "spectator");
 
     public GamemodeModule(SwagHub plugin) {
         super(plugin, "gamemode");
@@ -48,6 +52,7 @@ public class GamemodeModule extends Module implements CommandExecutor {
         PluginCommand command = plugin.getCommand("gamemode");
         if (command != null) {
             command.setExecutor(this);
+            command.setTabCompleter(this);
         } else {
             plugin.getLogger().warning("Could not find the 'gamemode' command — check plugin.yml.");
         }
@@ -61,6 +66,7 @@ public class GamemodeModule extends Module implements CommandExecutor {
                 plugin.getMessageUtil().send(sender, "module-disabled");
                 return true;
             });
+            command.setTabCompleter(null); // falls back to Bukkit's default completer
         }
     }
 
@@ -154,5 +160,43 @@ public class GamemodeModule extends Module implements CommandExecutor {
     private String prettify(GameMode mode) {
         String name = mode.name().toLowerCase(Locale.ROOT);
         return Character.toUpperCase(name.charAt(0)) + name.substring(1);
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
+        String lowerLabel = label.toLowerCase(Locale.ROOT);
+
+        // Invoked as the literal "/gamemode": arg[0] is the mode, arg[1] is the optional target.
+        if (lowerLabel.equals("gamemode")) {
+            if (args.length == 1) {
+                return filterStartsWith(MODE_NAMES, args[0]);
+            }
+            if (args.length == 2) {
+                return filterStartsWith(onlinePlayerNames(), args[1]);
+            }
+            return List.of();
+        }
+
+        // Invoked via an alias (gmc/gms/gma/gmsp): the mode is baked into the alias itself,
+        // so arg[0] is already the optional target.
+        if (args.length == 1) {
+            return filterStartsWith(onlinePlayerNames(), args[0]);
+        }
+        return List.of();
+    }
+
+    private List<String> onlinePlayerNames() {
+        List<String> names = new ArrayList<>();
+        for (Player player : Bukkit.getOnlinePlayers()) names.add(player.getName());
+        return names;
+    }
+
+    private List<String> filterStartsWith(List<String> candidates, String prefix) {
+        String lower = prefix.toLowerCase(Locale.ROOT);
+        List<String> result = new ArrayList<>();
+        for (String candidate : candidates) {
+            if (candidate.toLowerCase(Locale.ROOT).startsWith(lower)) result.add(candidate);
+        }
+        return result;
     }
 }

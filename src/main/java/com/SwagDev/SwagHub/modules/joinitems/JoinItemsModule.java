@@ -221,7 +221,20 @@ public class JoinItemsModule extends Module implements Listener {
         }
     }
 
-    @EventHandler(ignoreCancelled = true)
+    /**
+     * LOWEST priority, not ignoreCancelled: we need to run BEFORE everything else, not
+     * after. Cancelling an event doesn't retroactively undo what an earlier-priority
+     * handler already did — it only stops handlers that check the flag from running.
+     * A prior attempt used HIGHEST priority hoping to "override" other plugins, but by
+     * the time a HIGHEST handler runs, e.g. WorldEdit's Navigation Wand (bound to a
+     * plain compass by default) had already fired its own NORMAL-priority handler and
+     * performed its teleport — cancelling afterward changed nothing. Running at LOWEST
+     * and cancelling immediately means WorldEdit's own handler (which, like most
+     * well-behaved plugins, checks the cancelled state) never gets a chance to act at
+     * all. This only ever fires for items WE tagged (see getTaggedId below), so running
+     * first is safe — nothing else has a legitimate claim over a hub-given cosmetic item.
+     */
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onInteract(PlayerInteractEvent event) {
         if (event.getHand() != EquipmentSlot.HAND) {
             return; // avoid firing twice (main + off hand) for the same physical click

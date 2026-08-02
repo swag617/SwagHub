@@ -209,6 +209,16 @@ public class DoubleJumpModule extends Module implements Listener {
             // else: allowFlight is already true but WE didn't just set it — something
             // else (gamemode, /fly, another plugin) already owns it; stand down and
             // never add this player to our tracked set.
+        } else if (player.getGameMode() == GameMode.CREATIVE || player.getGameMode() == GameMode.SPECTATOR) {
+            // These gamemodes inherently need/grant flight themselves (same exemption
+            // FlyModule's own toggle() already makes) — just stop tracking any grant we
+            // previously held, without touching allowFlight. Revoking here would strip
+            // flight capability the gamemode itself just turned on, a moment after it did
+            // so: e.g. a player with our earlier double-jump grant active switches to
+            // spectator — its inherent noclip stays (that's the gamemode, not allowFlight)
+            // but revokeIfOurs() below would rip actual flight back off right after the
+            // gamemode granted it, leaving them able to fall through blocks but not fly.
+            grantedByUs.remove(player.getUniqueId());
         } else {
             revokeIfOurs(player);
         }

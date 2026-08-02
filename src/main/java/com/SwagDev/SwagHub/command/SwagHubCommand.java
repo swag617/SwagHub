@@ -3,6 +3,7 @@ package com.SwagDev.SwagHub.command;
 import com.SwagDev.SwagHub.SwagHub;
 import com.SwagDev.SwagHub.modules.hologram.HologramModule;
 import com.SwagDev.SwagHub.modules.menu.MenuModule;
+import com.SwagDev.SwagHub.modules.networkstats.NetworkStatsModule;
 import com.SwagDev.SwagHub.modules.portal.PortalModule;
 import com.SwagDev.SwagHub.modules.proxy.ProxyService;
 import com.SwagDev.SwagHub.modules.scoreboard.ScoreboardModule;
@@ -18,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -35,7 +37,7 @@ import java.util.stream.Stream;
 public class SwagHubCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> SUBCOMMANDS =
-            List.of("reload", "info", "proxy", "open", "scoreboard", "hologram", "portal");
+            List.of("reload", "info", "proxy", "open", "scoreboard", "hologram", "portal", "networkstats");
     private static final List<String> PROXY_SUBCOMMANDS = List.of("servers");
     private static final List<String> HOLOGRAM_SUBCOMMANDS =
             List.of("create", "delete", "addline", "setline", "removeline", "movehere", "list");
@@ -62,6 +64,7 @@ public class SwagHubCommand implements CommandExecutor, TabCompleter {
             case "scoreboard" -> handleScoreboard(sender);
             case "hologram" -> handleHologram(sender, args);
             case "portal" -> handlePortal(sender, args);
+            case "networkstats" -> handleNetworkStats(sender, args);
             default -> plugin.getMessageUtil().send(sender, "unknown-subcommand");
         }
         return true;
@@ -470,6 +473,55 @@ public class SwagHubCommand implements CommandExecutor, TabCompleter {
         }
     }
 
+    /**
+     * {@code /ah networkstats <server> <player>} — admin diagnostic that queries another
+     * server's SwagCore for a player's stats via {@link NetworkStatsModule}, entirely over
+     * HTTP (no direct database access to the other server). {@code <server>} is a key from
+     * {@code network.known-servers} in config.yml. The fetch is inherently asynchronous
+     * (a real HTTP round-trip, possibly to another machine) — this sends an immediate
+     * "querying" acknowledgement, then the result once it arrives, same two-message shape
+     * as {@code /ah proxy servers}.
+     */
+    private void handleNetworkStats(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("swaghub.command.networkstats")) {
+            plugin.getMessageUtil().send(sender, "no-permission");
+            return;
+        }
+        if (args.length < 3) {
+            sender.sendMessage(plugin.getMessageUtil().parse("<red>Usage: </red><yellow>/ah networkstats <server> <player></yellow>"));
+            return;
+        }
+
+        NetworkStatsModule module = plugin.getNetworkStatsModule();
+        if (module == null || !module.isEnabled()) {
+            sender.sendMessage(plugin.getMessageUtil().parse("<red>NetworkStatsModule is not enabled.</red>"));
+            return;
+        }
+
+        String serverId = args[1];
+        String playerName = args[2];
+        UUID uuid = Bukkit.getOfflinePlayer(playerName).getUniqueId();
+
+        sender.sendMessage(plugin.getMessageUtil().parse(
+                "<gray>Querying </gray><white>" + serverId + "</white><gray> for </gray><white>" + playerName + "</white><gray>'s stats...</gray>"));
+
+        module.fetch(serverId, uuid).thenAccept(summaryOpt -> Bukkit.getScheduler().runTask(plugin, () -> {
+            if (summaryOpt.isEmpty()) {
+                sender.sendMessage(plugin.getMessageUtil().parse(
+                        "<yellow>No data — '" + serverId + "' may be unknown, unreachable, or misconfigured "
+                        + "(check network.known-servers / network.shared-secret in config.yml on both sides).</yellow>"));
+                return;
+            }
+            NetworkStatsModule.PlayerSummary s = summaryOpt.get();
+            sender.sendMessage(plugin.getMessageUtil().parse(
+                    "<gray>" + playerName + " on </gray><white>" + serverId + "</white><gray>:</gray>"));
+            sender.sendMessage(plugin.getMessageUtil().parse("<gray> - Balance: </gray><green>" + s.balance() + "</green>"));
+            sender.sendMessage(plugin.getMessageUtil().parse("<gray> - Rank: </gray><white>" + s.rank() + "</white>"));
+            sender.sendMessage(plugin.getMessageUtil().parse("<gray> - Playtime: </gray><white>" + s.playtimeMinutes() + " min</white>"));
+            sender.sendMessage(plugin.getMessageUtil().parse("<gray> - Homes: </gray><white>" + s.homes() + "</white>"));
+        }));
+    }
+
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
@@ -522,6 +574,23 @@ public class SwagHubCommand implements CommandExecutor, TabCompleter {
             String partial = args[1].toLowerCase(Locale.ROOT);
             return PORTAL_SUBCOMMANDS.stream()
                     .filter(sub -> sub.startsWith(partial))
+                    .collect(Collectors.toList());
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("networkstats")) {
+            String partial = args[1].toLowerCase(Locale.ROOT);
+            NetworkStatsModule module = plugin.getNetworkStatsModule();
+            if (module == null) {
+                return new ArrayList<>();
+            }
+            return module.getKnownServerIds().stream()
+                    .filter(id -> id.startsWith(partial))
+                    .collect(Collectors.toList());
+        }
+        if (args.length == 3 && args[0].equalsIgnoreCase("networkstats")) {
+            String partial = args[2].toLowerCase(Locale.ROOT);
+            return Bukkit.getOnlinePlayers().stream()
+                    .map(Player::getName)
+                    .filter(name -> name.toLowerCase(Locale.ROOT).startsWith(partial))
                     .collect(Collectors.toList());
         }
         if (args.length == 3 && args[0].equalsIgnoreCase("portal") && args[1].equalsIgnoreCase("delete")) {

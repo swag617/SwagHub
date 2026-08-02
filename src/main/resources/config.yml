@@ -525,3 +525,23 @@ anti-wdl:
 # false to opt out entirely.
 metrics:
   enabled: true
+
+# ================================================================================
+#  Network stats  (module: networkstats)
+# ================================================================================
+# Lets this hub read player stats from other servers on your network (e.g. an SMP or
+# Factions server) over HTTP via each one's SwagCore, WITHOUT connecting directly to
+# their databases — keeps each game-type's data physically isolated (SMP's economy
+# never touches Factions') while still letting the hub display both. Always enabled
+# by default; harmless (fetch() just returns empty) if left unconfigured below.
+#
+# Test it with /ah networkstats <server> <player> once configured.
+network:
+  # Must match the target server's SwagAPI config.yml "network.shared-secret" exactly.
+  # Leave blank to disable all outgoing requests (every fetch() call returns empty).
+  shared-secret: ""
+  # server-id: full URL to that server's SwagCore network-service mount, i.e.
+  # "http://<that server's IP>:<SwagAPI web-server.port>/swagnet/swagcore/"
+  known-servers: {}
+    # smp: "http://10.0.0.180:8080/swagnet/swagcore/"
+    # factions: "http://10.0.0.181:8080/swagnet/swagcore/"

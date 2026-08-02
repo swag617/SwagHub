@@ -45,6 +45,7 @@ import com.SwagDev.SwagHub.modules.join.JoinSettingsModule;
 import com.SwagDev.SwagHub.modules.joinitems.JoinItemsModule;
 import com.SwagDev.SwagHub.modules.launchpad.LaunchpadModule;
 import com.SwagDev.SwagHub.modules.menu.MenuModule;
+import com.SwagDev.SwagHub.modules.networkstats.NetworkStatsModule;
 import com.SwagDev.SwagHub.modules.playerhider.PlayerHiderModule;
 import com.SwagDev.SwagHub.modules.portal.PortalModule;
 import com.SwagDev.SwagHub.modules.protection.WorldProtectionModule;
@@ -200,6 +201,7 @@ public final class SwagHub extends JavaPlugin {
     private HologramModule hologramModule;
     private PortalModule portalModule;
     private WebEditorModule webEditorModule;
+    private NetworkStatsModule networkStatsModule;
     private SwagHubAPI api;
     private SwagHubExpansion placeholderExpansion;
     private Metrics metrics;
@@ -541,6 +543,11 @@ public final class SwagHub extends JavaPlugin {
         // never touches shared in-memory state at enable time.
         webEditorModule = new WebEditorModule(this);
         moduleManager.register(webEditorModule);
+
+        // Reads other servers' player stats over HTTP (see class javadoc) — a utility module
+        // like the ones directly above, no ordering dependency on anything else.
+        networkStatsModule = new NetworkStatsModule(this);
+        moduleManager.register(networkStatsModule);
     }
 
     public static SwagHub getInstance() {
@@ -692,6 +699,10 @@ public final class SwagHub extends JavaPlugin {
 
     public WebEditorModule getWebEditorModule() {
         return webEditorModule;
+    }
+
+    public NetworkStatsModule getNetworkStatsModule() {
+        return networkStatsModule;
     }
 
     /** §5.11 developer API facade — see {@link SwagHubAPI}'s own javadoc. */

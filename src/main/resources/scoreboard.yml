@@ -26,11 +26,13 @@ worlds:
   default:
     title:
       frames:
-        - "<gradient:#7b2ff7:#f107a3>SWAGHUB</gradient>"
-        - "<gradient:#f107a3:#7b2ff7>NETWORK</gradient>"
+        - "<gradient:#7b2ff7:#f107a3><bold>SERVER</bold></gradient>"
+        - "<gradient:#f107a3:#7b2ff7><bold>SERVER</bold></gradient>"
       frame-interval-ticks: 20
     lines:
       - ""
       - "<gray>Players:</gray> <white>%swaghub_count_total%</white>"
       - ""
-      - "<gray>play.swaghub.net</gray>"
+      # No footer link by default — a specific domain/store URL isn't something safe
+      # to leave in a shared template. Add your own line here if you want one, e.g.:
+      # - "<gray>play.yourdomain.net</gray>"
