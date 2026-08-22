@@ -28,6 +28,9 @@
     <button class="tab-btn" data-tab="tab-tablist">Tablist</button>
     <button class="tab-btn" data-tab="tab-announcements">Announcements</button>
     <button class="tab-btn" data-tab="tab-worldprotection">World Protection</button>
+    <button class="tab-btn" data-tab="tab-joinspawn">Join &amp; Spawn</button>
+    <button class="tab-btn" data-tab="tab-chatcontrols">Chat Controls</button>
+    <button class="tab-btn" data-tab="tab-network">Network</button>
     <button class="tab-btn" data-tab="tab-messages">Messages</button>
 </nav>
 
@@ -281,6 +284,165 @@
         <div class="editor-actions">
             <button class="btn btn-primary" id="wp-save-btn">Save &amp; Reload</button>
             <span class="save-status" id="wp-save-status"></span>
+        </div>
+    </section>
+
+    <!-- ─── Join & Spawn ───────────────────────────────────── -->
+    <section id="tab-joinspawn" class="tab-content hidden">
+        <h2>Join &amp; Spawn</h2>
+
+        <div class="editor-block">
+            <h3>Join Settings</h3>
+            <div class="yield-banner hidden" id="js-yield-banner"></div>
+            <div class="field-row"><label for="js-clear-inventory">clear-inventory</label><input type="checkbox" id="js-clear-inventory"></div>
+            <div class="field-row"><label for="js-set-gamemode">set-gamemode</label><input type="checkbox" id="js-set-gamemode"></div>
+            <div class="field-row">
+                <label for="js-gamemode">gamemode</label>
+                <select id="js-gamemode">
+                    <option value="SURVIVAL">SURVIVAL</option>
+                    <option value="CREATIVE">CREATIVE</option>
+                    <option value="ADVENTURE">ADVENTURE</option>
+                    <option value="SPECTATOR">SPECTATOR</option>
+                </select>
+            </div>
+            <div class="field-row"><label for="js-heal-and-feed">heal-and-feed</label><input type="checkbox" id="js-heal-and-feed"></div>
+            <div class="field-row"><label for="js-join-firework">join-firework</label><input type="checkbox" id="js-join-firework"></div>
+
+            <h4>First-Join Actions</h4>
+            <p class="hint">One action per line, run only the very first time a player joins (after the first-join-message — see Messages). E.g. <code>[delay] 20</code>, <code>[message] Welcome %player%!</code>.</p>
+            <textarea id="js-first-join-actions" rows="4"></textarea>
+        </div>
+
+        <div class="editor-block">
+            <h3>Spawn / Lobby</h3>
+            <div class="yield-banner hidden" id="sp-yield-banner"></div>
+            <div class="field-row">
+                <label for="sp-teleport-delay">lobby-teleport-delay-ticks</label>
+                <input type="number" id="sp-teleport-delay" min="0" value="60">
+            </div>
+            <div class="field-row"><label for="sp-cancel-on-move">cancel-on-move</label><input type="checkbox" id="sp-cancel-on-move"></div>
+            <div class="field-row"><label for="sp-spawn-on-join">spawn-on-join</label><input type="checkbox" id="sp-spawn-on-join"></div>
+            <div class="field-row"><label for="sp-spawn-on-void-fall">spawn-on-void-fall</label><input type="checkbox" id="sp-spawn-on-void-fall"></div>
+            <div class="field-row"><label for="sp-spawn-on-respawn">spawn-on-respawn</label><input type="checkbox" id="sp-spawn-on-respawn"></div>
+        </div>
+
+        <div class="editor-block">
+            <h3>Double Jump</h3>
+            <div class="yield-banner hidden" id="dj-yield-banner"></div>
+            <div class="field-row"><label for="dj-power">power</label><input type="number" id="dj-power" step="0.1" value="1.4"></div>
+            <div class="field-row"><label for="dj-height">height</label><input type="number" id="dj-height" step="0.1" value="1.2"></div>
+            <div class="field-row"><label for="dj-particle">particle</label><input type="text" id="dj-particle" placeholder="CLOUD"></div>
+            <div class="field-row"><label for="dj-sound">sound</label><input type="text" id="dj-sound" placeholder="ENTITY_BAT_TAKEOFF"></div>
+            <p class="hint">Must be a valid Bukkit <code>Particle</code>/<code>Sound</code> enum name (case-insensitive).</p>
+            <div class="field-row"><label for="dj-bedrock">bedrock</label><input type="checkbox" id="dj-bedrock"></div>
+
+            <h4>Disabled-Launch-Effect Regions</h4>
+            <p class="hint">Two-corner cuboids where the double-jump boost/particle/sound is skipped (the underlying flight grant is untouched).</p>
+            <div id="dj-regions-list"></div>
+            <button class="btn btn-ghost btn-sm" id="dj-add-region-btn">+ Add Region</button>
+        </div>
+
+        <div class="editor-actions">
+            <button class="btn btn-primary" id="js-save-btn">Save &amp; Reload</button>
+            <span class="save-status" id="js-save-status"></span>
+        </div>
+    </section>
+
+    <!-- ─── Chat Controls ──────────────────────────────────── -->
+    <section id="tab-chatcontrols" class="tab-content hidden">
+        <h2>Chat Controls</h2>
+
+        <div class="editor-block">
+            <h3>Lock Chat</h3>
+            <p class="hint">The lock itself is toggled live with <code>/lockchat</code> — it always starts unlocked and is not a saved setting here.</p>
+            <div class="field-row">
+                <label for="lc-cooldown">cooldown-seconds</label>
+                <input type="number" id="lc-cooldown" min="0" value="0">
+            </div>
+
+            <h4>Command Blocker</h4>
+            <div class="field-row">
+                <label for="lc-blocker-mode">mode</label>
+                <select id="lc-blocker-mode">
+                    <option value="blacklist">blacklist</option>
+                    <option value="whitelist">whitelist</option>
+                </select>
+            </div>
+            <p class="hint">One base command per line, no leading <code>/</code> (e.g. <code>gamemode</code>).</p>
+            <textarea id="lc-blocker-commands" rows="4"></textarea>
+        </div>
+
+        <div class="editor-block">
+            <h3>Clear Chat</h3>
+            <div class="yield-banner hidden" id="cc-yield-banner"></div>
+            <div class="field-row">
+                <label for="cc-lines">lines</label>
+                <input type="number" id="cc-lines" min="1" value="100">
+            </div>
+            <div class="field-row"><label for="cc-clear-for-everyone">clear-for-everyone</label><input type="checkbox" id="cc-clear-for-everyone"></div>
+        </div>
+
+        <div class="editor-block">
+            <h3>Player Hider</h3>
+            <div class="field-row">
+                <label for="ph-cooldown">cooldown-seconds</label>
+                <input type="number" id="ph-cooldown" min="0" value="3">
+            </div>
+        </div>
+
+        <div class="editor-block">
+            <h3>Anti-WorldDownloader</h3>
+            <div class="field-row">
+                <label for="aw-action">action</label>
+                <select id="aw-action">
+                    <option value="kick">kick</option>
+                    <option value="warn">warn</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="editor-actions">
+            <button class="btn btn-primary" id="cc-save-btn">Save &amp; Reload</button>
+            <span class="save-status" id="cc-save-status"></span>
+        </div>
+    </section>
+
+    <!-- ─── Network ────────────────────────────────────────── -->
+    <section id="tab-network" class="tab-content hidden">
+        <h2>Network</h2>
+
+        <div class="editor-block">
+            <h3>Proxy Service</h3>
+            <p class="hint">Rides the <code>bungeecord:main</code> plugin-messaging channel — works against BungeeCord and Velocity's built-in compatibility layer with no proxy-side plugin required.</p>
+            <div class="field-row">
+                <label for="nt-poll-interval">poll-interval-seconds</label>
+                <input type="number" id="nt-poll-interval" min="1" value="10">
+            </div>
+            <div class="field-row">
+                <label for="nt-connect-timeout">connect-timeout-ticks</label>
+                <input type="number" id="nt-connect-timeout" min="0" value="40">
+            </div>
+            <h4>Backend Servers</h4>
+            <p class="hint">One server name per line, matching the proxy's own configured server names exactly. The network-wide total is always polled regardless of this list.</p>
+            <textarea id="nt-servers" rows="4"></textarea>
+        </div>
+
+        <div class="editor-block">
+            <h3>Network Stats</h3>
+            <p class="hint">Lets this hub read player stats from other servers over HTTP via each one's SwagCore, without connecting directly to their databases. Test with <code>/ah networkstats &lt;server&gt; &lt;player&gt;</code>.</p>
+            <div class="field-row">
+                <label for="nt-shared-secret">shared-secret</label>
+                <input type="password" id="nt-shared-secret" autocomplete="off" placeholder="(blank disables all outgoing requests)">
+            </div>
+            <h4>Known Servers</h4>
+            <p class="hint">Server id &rarr; full URL to that server's SwagAPI network-service mount (e.g. <code>http://10.0.0.180:8080/swagnet/swagcore/</code>).</p>
+            <div id="nt-known-servers-list"></div>
+            <button class="btn btn-ghost btn-sm" id="nt-add-known-server-btn">+ Add Server</button>
+        </div>
+
+        <div class="editor-actions">
+            <button class="btn btn-primary" id="nt-save-btn">Save &amp; Reload</button>
+            <span class="save-status" id="nt-save-status"></span>
         </div>
     </section>
 

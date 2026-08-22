@@ -76,6 +76,9 @@ var TAB_LOADERS = {
     'tab-tablist': loadTablist,
     'tab-announcements': loadAnnouncements,
     'tab-worldprotection': loadWorldProtection,
+    'tab-joinspawn': loadJoinSpawn,
+    'tab-chatcontrols': loadChatControls,
+    'tab-network': loadNetwork,
     'tab-messages': loadMessages
 };
 
@@ -750,6 +753,375 @@ document.getElementById('wp-save-btn').addEventListener('click', function() {
         loadStatus();
     }).catch(function(e) {
         showSaveStatus('wp-save-status', false, e.message);
+    });
+});
+
+// ─── Join & Spawn ────────────────────────────────────────────────
+
+var joinSpawnModel = null;
+
+function loadJoinSpawn() {
+    apiFetch('api/config/join-spawn').then(function(d) {
+        joinSpawnModel = d;
+        renderJoinSpawn(d);
+    }).catch(function(e) {
+        showSaveStatus('js-save-status', false, e.message);
+    });
+}
+
+function renderJoinSpawn(d) {
+    var js = d.joinSettings || {};
+    document.getElementById('js-clear-inventory').checked = !!js.clearInventory;
+    document.getElementById('js-set-gamemode').checked = !!js.setGamemode;
+    document.getElementById('js-gamemode').value = js.gamemode || 'ADVENTURE';
+    document.getElementById('js-heal-and-feed').checked = !!js.healAndFeed;
+    document.getElementById('js-join-firework').checked = !!js.joinFirework;
+    document.getElementById('js-first-join-actions').value = (js.firstJoinActions || []).join('\n');
+    updateYieldBanner('js-yield-banner', js);
+
+    var sp = d.spawn || {};
+    document.getElementById('sp-teleport-delay').value = (sp.lobbyTeleportDelayTicks === undefined) ? 60 : sp.lobbyTeleportDelayTicks;
+    document.getElementById('sp-cancel-on-move').checked = !!sp.cancelOnMove;
+    document.getElementById('sp-spawn-on-join').checked = !!sp.spawnOnJoin;
+    document.getElementById('sp-spawn-on-void-fall').checked = !!sp.spawnOnVoidFall;
+    document.getElementById('sp-spawn-on-respawn').checked = !!sp.spawnOnRespawn;
+    updateYieldBanner('sp-yield-banner', sp);
+
+    var dj = d.doubleJump || {};
+    document.getElementById('dj-power').value = (dj.power === undefined) ? 1.4 : dj.power;
+    document.getElementById('dj-height').value = (dj.height === undefined) ? 1.2 : dj.height;
+    document.getElementById('dj-particle').value = dj.particle || 'CLOUD';
+    document.getElementById('dj-sound').value = dj.sound || 'ENTITY_BAT_TAKEOFF';
+    document.getElementById('dj-bedrock').checked = !!dj.bedrock;
+    updateYieldBanner('dj-yield-banner', dj);
+    renderRegions(dj.regions || []);
+}
+
+// Deliberately NOT reusing the World Protection tab's zoneTextField/zoneNumberField
+// helpers here even though the two-corner-cuboid shape is identical — those helpers
+// hardcode a "wp-zone-" class prefix, and every tab's markup lives in the DOM
+// simultaneously (only hidden via CSS), so reusing them verbatim would stamp
+// confusing "wp-zone-*" classes onto Double Jump's own inputs. Parallel structure,
+// own "dj-region-" prefix instead — see the World Protection block above for the
+// shape this mirrors.
+function djRegionTextField(fieldName, label, value, extraWrapClass) {
+    var wrap = document.createElement('div');
+    wrap.className = 'zone-field' + (extraWrapClass ? ' ' + extraWrapClass : '');
+    var lbl = document.createElement('label');
+    lbl.textContent = label;
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'dj-region-' + fieldName;
+    input.value = value;
+    wrap.appendChild(lbl);
+    wrap.appendChild(input);
+    return wrap;
+}
+
+function djRegionNumberField(dataKey, label, value) {
+    var wrap = document.createElement('div');
+    wrap.className = 'zone-field';
+    var lbl = document.createElement('label');
+    lbl.textContent = label;
+    var input = document.createElement('input');
+    input.type = 'number';
+    input.className = 'dj-region-coord';
+    input.dataset.key = dataKey;
+    input.value = (value === undefined || value === null) ? 0 : value;
+    wrap.appendChild(lbl);
+    wrap.appendChild(input);
+    return wrap;
+}
+
+function renderRegions(regions) {
+    var list = document.getElementById('dj-regions-list');
+    list.innerHTML = '';
+    if (!regions.length) {
+        list.innerHTML = '<div class="muted">No regions configured — the double-jump launch effect works everywhere in hub worlds.</div>';
+        return;
+    }
+    regions.forEach(function(region, idx) {
+        var block = document.createElement('div');
+        block.className = 'entry-block dj-region-block';
+
+        var header = document.createElement('div');
+        header.className = 'entry-block-header';
+        var label = document.createElement('span');
+        label.textContent = 'Region #' + (idx + 1);
+        var removeBtn = document.createElement('button');
+        removeBtn.className = 'btn btn-danger btn-sm';
+        removeBtn.textContent = 'Remove';
+        removeBtn.addEventListener('click', function() {
+            syncRegionsFromForm();
+            joinSpawnModel.doubleJump.regions.splice(idx, 1);
+            renderRegions(joinSpawnModel.doubleJump.regions);
+        });
+        header.appendChild(label);
+        header.appendChild(removeBtn);
+        block.appendChild(header);
+
+        var fields = document.createElement('div');
+        fields.className = 'zone-fields';
+        fields.appendChild(djRegionTextField('name', 'name', region.name || '', 'zone-field-name'));
+        fields.appendChild(djRegionTextField('world', 'world', region.world || '', 'zone-field-world'));
+        ['corner1', 'corner2'].forEach(function(corner) {
+            ['x', 'y', 'z'].forEach(function(axis) {
+                var c = region[corner] || {};
+                fields.appendChild(djRegionNumberField(corner + '-' + axis, corner + '.' + axis, c[axis]));
+            });
+        });
+        block.appendChild(fields);
+
+        list.appendChild(block);
+    });
+}
+
+function syncRegionsFromForm() {
+    var blocks = document.querySelectorAll('#dj-regions-list .dj-region-block');
+    var regions = [];
+    blocks.forEach(function(block) {
+        var name = block.querySelector('.dj-region-name').value;
+        var world = block.querySelector('.dj-region-world').value;
+        var coords = {};
+        block.querySelectorAll('.dj-region-coord').forEach(function(inp) {
+            coords[inp.dataset.key] = parseFloat(inp.value) || 0;
+        });
+        regions.push({
+            name: name,
+            world: world,
+            corner1: {x: coords['corner1.x'], y: coords['corner1.y'], z: coords['corner1.z']},
+            corner2: {x: coords['corner2.x'], y: coords['corner2.y'], z: coords['corner2.z']}
+        });
+    });
+    if (joinSpawnModel && joinSpawnModel.doubleJump) {
+        joinSpawnModel.doubleJump.regions = regions;
+    }
+}
+
+document.getElementById('dj-add-region-btn').addEventListener('click', function() {
+    syncRegionsFromForm();
+    joinSpawnModel.doubleJump.regions.push({
+        name: 'region-' + (joinSpawnModel.doubleJump.regions.length + 1),
+        world: 'world',
+        corner1: {x: 0, y: 0, z: 0},
+        corner2: {x: 0, y: 0, z: 0}
+    });
+    renderRegions(joinSpawnModel.doubleJump.regions);
+});
+
+document.getElementById('js-save-btn').addEventListener('click', function() {
+    syncRegionsFromForm();
+    var body = {
+        joinSettings: {
+            clearInventory: document.getElementById('js-clear-inventory').checked,
+            setGamemode: document.getElementById('js-set-gamemode').checked,
+            gamemode: document.getElementById('js-gamemode').value,
+            healAndFeed: document.getElementById('js-heal-and-feed').checked,
+            joinFirework: document.getElementById('js-join-firework').checked,
+            firstJoinActions: splitLines(document.getElementById('js-first-join-actions').value)
+        },
+        spawn: {
+            lobbyTeleportDelayTicks: parseInt(document.getElementById('sp-teleport-delay').value, 10) || 0,
+            cancelOnMove: document.getElementById('sp-cancel-on-move').checked,
+            spawnOnJoin: document.getElementById('sp-spawn-on-join').checked,
+            spawnOnVoidFall: document.getElementById('sp-spawn-on-void-fall').checked,
+            spawnOnRespawn: document.getElementById('sp-spawn-on-respawn').checked
+        },
+        doubleJump: {
+            power: parseFloat(document.getElementById('dj-power').value) || 0,
+            height: parseFloat(document.getElementById('dj-height').value) || 0,
+            particle: document.getElementById('dj-particle').value.trim().toUpperCase(),
+            sound: document.getElementById('dj-sound').value.trim().toUpperCase(),
+            bedrock: document.getElementById('dj-bedrock').checked,
+            regions: (joinSpawnModel.doubleJump && joinSpawnModel.doubleJump.regions) || []
+        }
+    };
+    apiFetch('api/config/join-spawn', {method: 'POST', body: JSON.stringify(body)}).then(function(d) {
+        joinSpawnModel = d;
+        renderJoinSpawn(d);
+        showSaveStatus('js-save-status', true, 'Saved & reloaded.');
+        loadStatus();
+    }).catch(function(e) {
+        showSaveStatus('js-save-status', false, e.message);
+    });
+});
+
+// ─── Chat Controls ───────────────────────────────────────────────
+
+var chatControlsModel = null;
+
+function loadChatControls() {
+    apiFetch('api/config/chat-controls').then(function(d) {
+        chatControlsModel = d;
+        renderChatControls(d);
+    }).catch(function(e) {
+        showSaveStatus('cc-save-status', false, e.message);
+    });
+}
+
+function renderChatControls(d) {
+    var lc = d.lockchat || {};
+    document.getElementById('lc-cooldown').value = (lc.cooldownSeconds === undefined) ? 0 : lc.cooldownSeconds;
+    document.getElementById('lc-blocker-mode').value = lc.commandBlockerMode || 'blacklist';
+    document.getElementById('lc-blocker-commands').value = (lc.commandBlockerCommands || []).join('\n');
+
+    var cc = d.clearchat || {};
+    document.getElementById('cc-lines').value = (cc.lines === undefined) ? 100 : cc.lines;
+    document.getElementById('cc-clear-for-everyone').checked = !!cc.clearForEveryone;
+    updateYieldBanner('cc-yield-banner', cc);
+
+    var ph = d.playerHider || {};
+    document.getElementById('ph-cooldown').value = (ph.cooldownSeconds === undefined) ? 3 : ph.cooldownSeconds;
+
+    var aw = d.antiWdl || {};
+    document.getElementById('aw-action').value = aw.action || 'kick';
+}
+
+document.getElementById('cc-save-btn').addEventListener('click', function() {
+    var body = {
+        lockchat: {
+            cooldownSeconds: parseInt(document.getElementById('lc-cooldown').value, 10) || 0,
+            commandBlockerMode: document.getElementById('lc-blocker-mode').value,
+            commandBlockerCommands: splitLines(document.getElementById('lc-blocker-commands').value)
+        },
+        clearchat: {
+            lines: parseInt(document.getElementById('cc-lines').value, 10) || 100,
+            clearForEveryone: document.getElementById('cc-clear-for-everyone').checked
+        },
+        playerHider: {
+            cooldownSeconds: parseInt(document.getElementById('ph-cooldown').value, 10) || 0
+        },
+        antiWdl: {
+            action: document.getElementById('aw-action').value
+        }
+    };
+    apiFetch('api/config/chat-controls', {method: 'POST', body: JSON.stringify(body)}).then(function(d) {
+        chatControlsModel = d;
+        renderChatControls(d);
+        showSaveStatus('cc-save-status', true, 'Saved & reloaded.');
+        loadStatus();
+    }).catch(function(e) {
+        showSaveStatus('cc-save-status', false, e.message);
+    });
+});
+
+// ─── Network ─────────────────────────────────────────────────────
+
+var networkModel = null;
+
+function loadNetwork() {
+    apiFetch('api/config/network').then(function(d) {
+        networkModel = d;
+        renderNetwork(d);
+    }).catch(function(e) {
+        showSaveStatus('nt-save-status', false, e.message);
+    });
+}
+
+function renderNetwork(d) {
+    var px = d.proxy || {};
+    document.getElementById('nt-poll-interval').value = (px.pollIntervalSeconds === undefined) ? 10 : px.pollIntervalSeconds;
+    document.getElementById('nt-connect-timeout').value = (px.connectTimeoutTicks === undefined) ? 40 : px.connectTimeoutTicks;
+    document.getElementById('nt-servers').value = (px.servers || []).join('\n');
+
+    var nw = d.network || {};
+    document.getElementById('nt-shared-secret').value = nw.sharedSecret || '';
+    renderKnownServers(nw.knownServers || {});
+}
+
+function renderKnownServers(knownServers) {
+    var list = document.getElementById('nt-known-servers-list');
+    list.innerHTML = '';
+    var ids = Object.keys(knownServers);
+    if (!ids.length) {
+        list.innerHTML = '<div class="muted">No known servers configured — networkstats fetch() calls return empty until at least one is added.</div>';
+        return;
+    }
+    ids.forEach(function(id) {
+        list.appendChild(knownServerRow(id, knownServers[id]));
+    });
+}
+
+function knownServerRow(id, url) {
+    var block = document.createElement('div');
+    block.className = 'entry-block nt-server-row';
+
+    var header = document.createElement('div');
+    header.className = 'entry-block-header';
+    var label = document.createElement('span');
+    label.textContent = 'Server';
+    var removeBtn = document.createElement('button');
+    removeBtn.className = 'btn btn-danger btn-sm';
+    removeBtn.textContent = 'Remove';
+    removeBtn.addEventListener('click', function() {
+        block.remove();
+    });
+    header.appendChild(label);
+    header.appendChild(removeBtn);
+    block.appendChild(header);
+
+    var fields = document.createElement('div');
+    fields.className = 'kv-fields';
+    fields.appendChild(knownServerField('kv-field-id', 'nt-server-id', 'id', id));
+    fields.appendChild(knownServerField('kv-field-url', 'nt-server-url', 'url', url));
+    block.appendChild(fields);
+
+    return block;
+}
+
+function knownServerField(wrapClass, inputClass, label, value) {
+    var wrap = document.createElement('div');
+    wrap.className = 'kv-field ' + wrapClass;
+    var lbl = document.createElement('label');
+    lbl.textContent = label;
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = inputClass;
+    input.value = value || '';
+    wrap.appendChild(lbl);
+    wrap.appendChild(input);
+    return wrap;
+}
+
+document.getElementById('nt-add-known-server-btn').addEventListener('click', function() {
+    var list = document.getElementById('nt-known-servers-list');
+    if (list.querySelector('.muted')) {
+        list.innerHTML = '';
+    }
+    list.appendChild(knownServerRow('', ''));
+});
+
+function syncKnownServersFromForm() {
+    var servers = {};
+    document.querySelectorAll('#nt-known-servers-list .nt-server-row').forEach(function(row) {
+        var id = row.querySelector('.nt-server-id').value.trim();
+        var url = row.querySelector('.nt-server-url').value.trim();
+        if (id) {
+            servers[id] = url;
+        }
+    });
+    return servers;
+}
+
+document.getElementById('nt-save-btn').addEventListener('click', function() {
+    var body = {
+        proxy: {
+            pollIntervalSeconds: parseInt(document.getElementById('nt-poll-interval').value, 10) || 10,
+            connectTimeoutTicks: parseInt(document.getElementById('nt-connect-timeout').value, 10) || 0,
+            servers: splitLines(document.getElementById('nt-servers').value)
+        },
+        network: {
+            sharedSecret: document.getElementById('nt-shared-secret').value,
+            knownServers: syncKnownServersFromForm()
+        }
+    };
+    apiFetch('api/config/network', {method: 'POST', body: JSON.stringify(body)}).then(function(d) {
+        networkModel = d;
+        renderNetwork(d);
+        showSaveStatus('nt-save-status', true, 'Saved & reloaded.');
+        loadStatus();
+    }).catch(function(e) {
+        showSaveStatus('nt-save-status', false, e.message);
     });
 });
 

@@ -12,6 +12,9 @@ import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.sun.net.httpserver.HttpExchange;
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -88,6 +91,9 @@ public class SwagHubWebApiHandler {
                 case "/config/tablist" -> dispatch(exchange, method, this::getTablist, this::postTablist);
                 case "/config/announcements" -> dispatch(exchange, method, this::getAnnouncements, this::postAnnouncements);
                 case "/config/world-protection" -> dispatch(exchange, method, this::getWorldProtection, this::postWorldProtection);
+                case "/config/join-spawn" -> dispatch(exchange, method, this::getJoinSpawn, this::postJoinSpawn);
+                case "/config/chat-controls" -> dispatch(exchange, method, this::getChatControls, this::postChatControls);
+                case "/config/network" -> dispatch(exchange, method, this::getNetwork, this::postNetwork);
                 case "/config/messages" -> dispatch(exchange, method, this::getMessages, this::postMessages);
                 default -> SwagHubWebResponses.sendJson(exchange, 404, jsonError("Unknown endpoint"));
             }
@@ -967,6 +973,653 @@ public class SwagHubWebApiHandler {
         return sb.toString();
     }
 
+    // ─── GET/POST /config/join-spawn ─────────────────────────────────
+
+    /**
+     * Bundles three unrelated-but-small modules into one tab/one endpoint, exactly the
+     * way {@code /config/core} bundles server-role/hub-worlds/modules/compatibility —
+     * "join-settings", "spawn", and "double-jump" each get their own nested JSON object
+     * (with their own {@link #addModuleStatus} block) so the frontend can show
+     * per-module enabled/yielded state independently even though they save together.
+     * Reads/writes the SAME live {@code plugin.getConfig()} object every other
+     * config.yml-backed endpoint above does — never a from-scratch rebuild.
+     */
+    private static final String[] JOIN_SETTINGS_BOOL_FIELDS = {
+            "clearInventory", "setGamemode", "healAndFeed", "joinFirework"
+    };
+    private static final String[] SPAWN_BOOL_FIELDS = {
+            "cancelOnMove", "spawnOnJoin", "spawnOnVoidFall", "spawnOnRespawn"
+    };
+
+    private JsonObject buildJoinSpawnState() {
+        var cfg = plugin.getConfig();
+        JsonObject root = new JsonObject();
+
+        JsonObject joinSettings = new JsonObject();
+        joinSettings.addProperty("clearInventory", cfg.getBoolean("join-settings.clear-inventory", true));
+        joinSettings.addProperty("setGamemode", cfg.getBoolean("join-settings.set-gamemode", true));
+        joinSettings.addProperty("gamemode", cfg.getString("join-settings.gamemode", "ADVENTURE"));
+        joinSettings.addProperty("healAndFeed", cfg.getBoolean("join-settings.heal-and-feed", true));
+        joinSettings.addProperty("joinFirework", cfg.getBoolean("join-settings.join-firework", true));
+        joinSettings.add("firstJoinActions", gson.toJsonTree(cfg.getStringList("join-settings.first-join.actions")));
+        addModuleStatus(joinSettings, "join-settings");
+        root.add("joinSettings", joinSettings);
+
+        JsonObject spawn = new JsonObject();
+        spawn.addProperty("lobbyTeleportDelayTicks", cfg.getLong("spawn.lobby-teleport-delay-ticks", 60L));
+        spawn.addProperty("cancelOnMove", cfg.getBoolean("spawn.cancel-on-move", true));
+        spawn.addProperty("spawnOnJoin", cfg.getBoolean("spawn.spawn-on-join", true));
+        spawn.addProperty("spawnOnVoidFall", cfg.getBoolean("spawn.spawn-on-void-fall", true));
+        spawn.addProperty("spawnOnRespawn", cfg.getBoolean("spawn.spawn-on-respawn", true));
+        addModuleStatus(spawn, "spawn");
+        root.add("spawn", spawn);
+
+        JsonObject doubleJump = new JsonObject();
+        doubleJump.addProperty("power", cfg.getDouble("double-jump.power", 1.4));
+        doubleJump.addProperty("height", cfg.getDouble("double-jump.height", 1.2));
+        doubleJump.addProperty("particle", cfg.getString("double-jump.particle", "CLOUD"));
+        doubleJump.addProperty("sound", cfg.getString("double-jump.sound", "ENTITY_BAT_TAKEOFF"));
+        doubleJump.addProperty("bedrock", cfg.getBoolean("double-jump.bedrock", true));
+        doubleJump.add("regions", regionsToJson(cfg.getMapList("double-jump.regions")));
+        addModuleStatus(doubleJump, "double-jump");
+        root.add("doubleJump", doubleJump);
+
+        return root;
+    }
+
+    /** Same tolerant, one-bad-entry-never-aborts-the-rest shape as {@link #pvpZonesToJson} — see that method's javadoc. */
+    private JsonArray regionsToJson(List<Map<?, ?>> rawRegions) {
+        JsonArray arr = new JsonArray();
+        for (Map<?, ?> regionMap : rawRegions) {
+            try {
+                Map<?, ?> c1 = (Map<?, ?>) regionMap.get("corner1");
+                Map<?, ?> c2 = (Map<?, ?>) regionMap.get("corner2");
+                JsonObject regionObj = new JsonObject();
+                regionObj.addProperty("name", String.valueOf(regionMap.get("name")));
+                regionObj.addProperty("world", String.valueOf(regionMap.get("world")));
+                regionObj.add("corner1", cornerToJson(c1));
+                regionObj.add("corner2", cornerToJson(c2));
+                arr.add(regionObj);
+            } catch (Exception ex) {
+                plugin.getLogger().warning("Web editor: skipping malformed entry in double-jump.regions: " + regionMap);
+            }
+        }
+        return arr;
+    }
+
+    private void getJoinSpawn(HttpExchange exchange) throws IOException {
+        SwagHubWebResponses.sendJson(exchange, 200, gson.toJson(buildJoinSpawnState()));
+    }
+
+    private void postJoinSpawn(HttpExchange exchange) throws IOException {
+        JsonObject body = readBody(exchange);
+        if (body == null) {
+            sendError(exchange, 400, "Invalid JSON body.");
+            return;
+        }
+
+        // ── Validate everything BEFORE touching any config state. ──
+        Map<String, Boolean> jsBoolFields = new LinkedHashMap<>();
+        String gamemode = null;
+        List<String> firstJoinActions = null;
+        if (body.has("joinSettings")) {
+            JsonElement el = body.get("joinSettings");
+            if (!el.isJsonObject()) {
+                sendError(exchange, 400, "joinSettings must be an object.");
+                return;
+            }
+            JsonObject js = el.getAsJsonObject();
+            for (String key : JOIN_SETTINGS_BOOL_FIELDS) {
+                if (js.has(key)) {
+                    JsonElement v = js.get(key);
+                    if (!v.isJsonPrimitive() || !v.getAsJsonPrimitive().isBoolean()) {
+                        sendError(exchange, 400, "joinSettings." + key + " must be a boolean.");
+                        return;
+                    }
+                    jsBoolFields.put(key, v.getAsBoolean());
+                }
+            }
+            if (js.has("gamemode")) {
+                JsonElement v = js.get("gamemode");
+                String raw = v.isJsonPrimitive() ? v.getAsString() : null;
+                if (!isValidGameMode(raw)) {
+                    sendError(exchange, 400, "joinSettings.gamemode must be a valid GameMode (SURVIVAL, CREATIVE, ADVENTURE, or SPECTATOR).");
+                    return;
+                }
+                gamemode = raw.trim().toUpperCase(Locale.ROOT);
+            }
+            if (js.has("firstJoinActions")) {
+                JsonElement v = js.get("firstJoinActions");
+                if (!isStringArray(v)) {
+                    sendError(exchange, 400, "joinSettings.firstJoinActions must be an array of strings.");
+                    return;
+                }
+                for (JsonElement actionEl : v.getAsJsonArray()) {
+                    String action = actionEl.getAsString();
+                    if (!ACTION_LINE_PATTERN.matcher(action.trim()).matches()) {
+                        sendError(exchange, 400, "joinSettings.firstJoinActions has a malformed action (expected \"[tag] argument\"): \"" + action + "\"");
+                        return;
+                    }
+                }
+                firstJoinActions = toStringList(v);
+            }
+        }
+
+        Map<String, Boolean> spawnBoolFields = new LinkedHashMap<>();
+        Long lobbyDelayTicks = null;
+        if (body.has("spawn")) {
+            JsonElement el = body.get("spawn");
+            if (!el.isJsonObject()) {
+                sendError(exchange, 400, "spawn must be an object.");
+                return;
+            }
+            JsonObject sp = el.getAsJsonObject();
+            for (String key : SPAWN_BOOL_FIELDS) {
+                if (sp.has(key)) {
+                    JsonElement v = sp.get(key);
+                    if (!v.isJsonPrimitive() || !v.getAsJsonPrimitive().isBoolean()) {
+                        sendError(exchange, 400, "spawn." + key + " must be a boolean.");
+                        return;
+                    }
+                    spawnBoolFields.put(key, v.getAsBoolean());
+                }
+            }
+            if (sp.has("lobbyTeleportDelayTicks")) {
+                JsonElement v = sp.get("lobbyTeleportDelayTicks");
+                if (!isNumber(v)) {
+                    sendError(exchange, 400, "spawn.lobbyTeleportDelayTicks must be a number.");
+                    return;
+                }
+                lobbyDelayTicks = Math.max(0L, v.getAsLong());
+            }
+        }
+
+        Double djPower = null;
+        Double djHeight = null;
+        String djParticle = null;
+        String djSound = null;
+        Boolean djBedrock = null;
+        List<Map<String, Object>> djRegions = null;
+        if (body.has("doubleJump")) {
+            JsonElement el = body.get("doubleJump");
+            if (!el.isJsonObject()) {
+                sendError(exchange, 400, "doubleJump must be an object.");
+                return;
+            }
+            JsonObject dj = el.getAsJsonObject();
+            if (dj.has("power")) {
+                if (!isNumber(dj.get("power"))) {
+                    sendError(exchange, 400, "doubleJump.power must be a number.");
+                    return;
+                }
+                djPower = dj.get("power").getAsDouble();
+            }
+            if (dj.has("height")) {
+                if (!isNumber(dj.get("height"))) {
+                    sendError(exchange, 400, "doubleJump.height must be a number.");
+                    return;
+                }
+                djHeight = dj.get("height").getAsDouble();
+            }
+            if (dj.has("particle")) {
+                JsonElement v = dj.get("particle");
+                String raw = v.isJsonPrimitive() ? v.getAsString() : null;
+                if (!isValidParticle(raw)) {
+                    sendError(exchange, 400, "doubleJump.particle must be a valid Bukkit Particle name (e.g. CLOUD).");
+                    return;
+                }
+                djParticle = raw.trim().toUpperCase(Locale.ROOT);
+            }
+            if (dj.has("sound")) {
+                JsonElement v = dj.get("sound");
+                String raw = v.isJsonPrimitive() ? v.getAsString() : null;
+                if (!isValidSound(raw)) {
+                    sendError(exchange, 400, "doubleJump.sound must be a valid Bukkit Sound name (e.g. ENTITY_BAT_TAKEOFF).");
+                    return;
+                }
+                djSound = raw.trim().toUpperCase(Locale.ROOT);
+            }
+            if (dj.has("bedrock")) {
+                JsonElement v = dj.get("bedrock");
+                if (!v.isJsonPrimitive() || !v.getAsJsonPrimitive().isBoolean()) {
+                    sendError(exchange, 400, "doubleJump.bedrock must be a boolean.");
+                    return;
+                }
+                djBedrock = v.getAsBoolean();
+            }
+            if (dj.has("regions")) {
+                djRegions = parseCornerZones(exchange, dj.get("regions"), "doubleJump.regions");
+                if (djRegions == null) {
+                    return; // error already sent by parseCornerZones
+                }
+            }
+        }
+
+        // ── All validation passed — apply onto the LIVE config object, save, reload. ──
+        var cfg = plugin.getConfig();
+        for (Map.Entry<String, Boolean> entry : jsBoolFields.entrySet()) {
+            cfg.set("join-settings." + camelToKebab(entry.getKey()), entry.getValue());
+        }
+        if (gamemode != null) {
+            cfg.set("join-settings.gamemode", gamemode);
+        }
+        if (firstJoinActions != null) {
+            cfg.set("join-settings.first-join.actions", firstJoinActions);
+        }
+
+        for (Map.Entry<String, Boolean> entry : spawnBoolFields.entrySet()) {
+            cfg.set("spawn." + camelToKebab(entry.getKey()), entry.getValue());
+        }
+        if (lobbyDelayTicks != null) {
+            cfg.set("spawn.lobby-teleport-delay-ticks", lobbyDelayTicks);
+        }
+
+        if (djPower != null) {
+            cfg.set("double-jump.power", djPower);
+        }
+        if (djHeight != null) {
+            cfg.set("double-jump.height", djHeight);
+        }
+        if (djParticle != null) {
+            cfg.set("double-jump.particle", djParticle);
+        }
+        if (djSound != null) {
+            cfg.set("double-jump.sound", djSound);
+        }
+        if (djBedrock != null) {
+            cfg.set("double-jump.bedrock", djBedrock);
+        }
+        if (djRegions != null) {
+            cfg.set("double-jump.regions", djRegions);
+        }
+
+        plugin.getConfigManager().save();
+        plugin.getModuleManager().getModule("join-settings").ifPresent(Module::reload);
+        plugin.getModuleManager().getModule("spawn").ifPresent(Module::reload);
+        plugin.getModuleManager().getModule("double-jump").ifPresent(Module::reload);
+
+        JsonObject response = buildJoinSpawnState();
+        response.addProperty("saved", true);
+        SwagHubWebResponses.sendJson(exchange, 200, gson.toJson(response));
+    }
+
+    /**
+     * Shared two-corner-cuboid array parser — same shape {@code world-protection.pvp-zones}
+     * uses (see {@link #parseCorner}), reused here for {@code double-jump.regions} rather
+     * than duplicating the corner-parsing logic itself. Sends its own {@code 400} and
+     * returns {@code null} on any validation failure (an empty-but-valid array returns a
+     * non-null empty list, so {@code null} unambiguously means "already handled").
+     */
+    private List<Map<String, Object>> parseCornerZones(HttpExchange exchange, JsonElement el, String fieldPrefix) throws IOException {
+        if (!el.isJsonArray()) {
+            sendError(exchange, 400, fieldPrefix + " must be an array.");
+            return null;
+        }
+        List<Map<String, Object>> out = new ArrayList<>();
+        int idx = 0;
+        for (JsonElement zoneEl : el.getAsJsonArray()) {
+            idx++;
+            String field = fieldPrefix + "[" + idx + "]";
+            if (!zoneEl.isJsonObject()) {
+                sendError(exchange, 400, field + " must be an object.");
+                return null;
+            }
+            JsonObject zoneObj = zoneEl.getAsJsonObject();
+            if (!zoneObj.has("name") || !zoneObj.get("name").isJsonPrimitive()) {
+                sendError(exchange, 400, field + ".name is required.");
+                return null;
+            }
+            if (!zoneObj.has("world") || !zoneObj.get("world").isJsonPrimitive()) {
+                sendError(exchange, 400, field + ".world is required.");
+                return null;
+            }
+            Map<String, Object> c1 = parseCorner(zoneObj, "corner1");
+            if (c1 == null) {
+                sendError(exchange, 400, field + ".corner1 must have numeric x, y, z.");
+                return null;
+            }
+            Map<String, Object> c2 = parseCorner(zoneObj, "corner2");
+            if (c2 == null) {
+                sendError(exchange, 400, field + ".corner2 must have numeric x, y, z.");
+                return null;
+            }
+            Map<String, Object> zoneMap = new LinkedHashMap<>();
+            zoneMap.put("name", zoneObj.get("name").getAsString());
+            zoneMap.put("world", zoneObj.get("world").getAsString());
+            zoneMap.put("corner1", c1);
+            zoneMap.put("corner2", c2);
+            out.add(zoneMap);
+        }
+        return out;
+    }
+
+    // ─── GET/POST /config/chat-controls ──────────────────────────────
+
+    /** Bundles four small, never-yield-together modules (lockchat/clearchat/player-hider/anti-wdl) into one tab, same reasoning as {@link #buildJoinSpawnState}. */
+    private JsonObject buildChatControlsState() {
+        var cfg = plugin.getConfig();
+        JsonObject root = new JsonObject();
+
+        JsonObject lockchat = new JsonObject();
+        lockchat.addProperty("cooldownSeconds", cfg.getLong("lockchat.cooldown-seconds", 0L));
+        lockchat.addProperty("commandBlockerMode", cfg.getString("lockchat.command-blocker.mode", "blacklist"));
+        lockchat.add("commandBlockerCommands", gson.toJsonTree(cfg.getStringList("lockchat.command-blocker.commands")));
+        addModuleStatus(lockchat, "lockchat");
+        root.add("lockchat", lockchat);
+
+        JsonObject clearchat = new JsonObject();
+        clearchat.addProperty("lines", cfg.getInt("clearchat.lines", 100));
+        clearchat.addProperty("clearForEveryone", cfg.getBoolean("clearchat.clear-for-everyone", true));
+        addModuleStatus(clearchat, "clearchat");
+        root.add("clearchat", clearchat);
+
+        JsonObject playerHider = new JsonObject();
+        playerHider.addProperty("cooldownSeconds", cfg.getLong("player-hider.cooldown-seconds", 3L));
+        addModuleStatus(playerHider, "player-hider");
+        root.add("playerHider", playerHider);
+
+        JsonObject antiWdl = new JsonObject();
+        antiWdl.addProperty("action", cfg.getString("anti-wdl.action", "kick"));
+        addModuleStatus(antiWdl, "anti-wdl");
+        root.add("antiWdl", antiWdl);
+
+        return root;
+    }
+
+    private void getChatControls(HttpExchange exchange) throws IOException {
+        SwagHubWebResponses.sendJson(exchange, 200, gson.toJson(buildChatControlsState()));
+    }
+
+    private void postChatControls(HttpExchange exchange) throws IOException {
+        JsonObject body = readBody(exchange);
+        if (body == null) {
+            sendError(exchange, 400, "Invalid JSON body.");
+            return;
+        }
+
+        Long lockchatCooldown = null;
+        String commandBlockerMode = null;
+        List<String> commandBlockerCommands = null;
+        if (body.has("lockchat")) {
+            JsonElement el = body.get("lockchat");
+            if (!el.isJsonObject()) {
+                sendError(exchange, 400, "lockchat must be an object.");
+                return;
+            }
+            JsonObject lc = el.getAsJsonObject();
+            if (lc.has("cooldownSeconds")) {
+                if (!isNumber(lc.get("cooldownSeconds"))) {
+                    sendError(exchange, 400, "lockchat.cooldownSeconds must be a number.");
+                    return;
+                }
+                lockchatCooldown = Math.max(0L, lc.get("cooldownSeconds").getAsLong());
+            }
+            if (lc.has("commandBlockerMode")) {
+                JsonElement v = lc.get("commandBlockerMode");
+                String raw = v.isJsonPrimitive() ? v.getAsString() : null;
+                if (!isValidCommandBlockerMode(raw)) {
+                    sendError(exchange, 400, "lockchat.commandBlockerMode must be 'blacklist' or 'whitelist'.");
+                    return;
+                }
+                commandBlockerMode = raw.trim().toLowerCase(Locale.ROOT);
+            }
+            if (lc.has("commandBlockerCommands")) {
+                JsonElement v = lc.get("commandBlockerCommands");
+                if (!isStringArray(v)) {
+                    sendError(exchange, 400, "lockchat.commandBlockerCommands must be an array of strings.");
+                    return;
+                }
+                commandBlockerCommands = toStringList(v);
+            }
+        }
+
+        Integer clearchatLines = null;
+        Boolean clearForEveryone = null;
+        if (body.has("clearchat")) {
+            JsonElement el = body.get("clearchat");
+            if (!el.isJsonObject()) {
+                sendError(exchange, 400, "clearchat must be an object.");
+                return;
+            }
+            JsonObject cc = el.getAsJsonObject();
+            if (cc.has("lines")) {
+                if (!isNumber(cc.get("lines"))) {
+                    sendError(exchange, 400, "clearchat.lines must be a number.");
+                    return;
+                }
+                clearchatLines = Math.max(1, cc.get("lines").getAsInt());
+            }
+            if (cc.has("clearForEveryone")) {
+                JsonElement v = cc.get("clearForEveryone");
+                if (!v.isJsonPrimitive() || !v.getAsJsonPrimitive().isBoolean()) {
+                    sendError(exchange, 400, "clearchat.clearForEveryone must be a boolean.");
+                    return;
+                }
+                clearForEveryone = v.getAsBoolean();
+            }
+        }
+
+        Long playerHiderCooldown = null;
+        if (body.has("playerHider")) {
+            JsonElement el = body.get("playerHider");
+            if (!el.isJsonObject()) {
+                sendError(exchange, 400, "playerHider must be an object.");
+                return;
+            }
+            JsonObject ph = el.getAsJsonObject();
+            if (ph.has("cooldownSeconds")) {
+                if (!isNumber(ph.get("cooldownSeconds"))) {
+                    sendError(exchange, 400, "playerHider.cooldownSeconds must be a number.");
+                    return;
+                }
+                playerHiderCooldown = Math.max(0L, ph.get("cooldownSeconds").getAsLong());
+            }
+        }
+
+        String antiWdlAction = null;
+        if (body.has("antiWdl")) {
+            JsonElement el = body.get("antiWdl");
+            if (!el.isJsonObject()) {
+                sendError(exchange, 400, "antiWdl must be an object.");
+                return;
+            }
+            JsonObject aw = el.getAsJsonObject();
+            if (aw.has("action")) {
+                JsonElement v = aw.get("action");
+                String raw = v.isJsonPrimitive() ? v.getAsString() : null;
+                if (!isValidWdlAction(raw)) {
+                    sendError(exchange, 400, "antiWdl.action must be 'kick' or 'warn'.");
+                    return;
+                }
+                antiWdlAction = raw.trim().toLowerCase(Locale.ROOT);
+            }
+        }
+
+        // ── All validation passed — apply onto the LIVE config object, save, reload. ──
+        var cfg = plugin.getConfig();
+        if (lockchatCooldown != null) {
+            cfg.set("lockchat.cooldown-seconds", lockchatCooldown);
+        }
+        if (commandBlockerMode != null) {
+            cfg.set("lockchat.command-blocker.mode", commandBlockerMode);
+        }
+        if (commandBlockerCommands != null) {
+            cfg.set("lockchat.command-blocker.commands", commandBlockerCommands);
+        }
+        if (clearchatLines != null) {
+            cfg.set("clearchat.lines", clearchatLines);
+        }
+        if (clearForEveryone != null) {
+            cfg.set("clearchat.clear-for-everyone", clearForEveryone);
+        }
+        if (playerHiderCooldown != null) {
+            cfg.set("player-hider.cooldown-seconds", playerHiderCooldown);
+        }
+        if (antiWdlAction != null) {
+            cfg.set("anti-wdl.action", antiWdlAction);
+        }
+
+        plugin.getConfigManager().save();
+        plugin.getModuleManager().getModule("lockchat").ifPresent(Module::reload);
+        plugin.getModuleManager().getModule("clearchat").ifPresent(Module::reload);
+        plugin.getModuleManager().getModule("player-hider").ifPresent(Module::reload);
+        plugin.getModuleManager().getModule("anti-wdl").ifPresent(Module::reload);
+
+        JsonObject response = buildChatControlsState();
+        response.addProperty("saved", true);
+        SwagHubWebResponses.sendJson(exchange, 200, gson.toJson(response));
+    }
+
+    // ─── GET/POST /config/network ─────────────────────────────────────
+
+    /**
+     * Bundles {@code proxy} and {@code network} (the {@code networkstats} module's
+     * config section — its module key and config-section name deliberately differ, see
+     * {@link com.SwagDev.SwagHub.modules.networkstats.NetworkStatsModule}) into one tab.
+     * {@code network.shared-secret} is sensitive: it is returned as plain text in the
+     * GET response (this endpoint is already gated behind {@code swaghub.dashboard.view},
+     * the same trust boundary every other secret-bearing admin surface in this plugin
+     * uses) but is NEVER written to any log line in this class, unlike, say, a failed
+     * save's exception message elsewhere in this file.
+     */
+    private JsonObject buildNetworkState() {
+        var cfg = plugin.getConfig();
+        JsonObject root = new JsonObject();
+
+        JsonObject proxy = new JsonObject();
+        proxy.addProperty("pollIntervalSeconds", cfg.getLong("proxy.poll-interval-seconds", 10L));
+        proxy.add("servers", gson.toJsonTree(cfg.getStringList("proxy.servers")));
+        proxy.addProperty("connectTimeoutTicks", cfg.getLong("proxy.connect-timeout-ticks", 40L));
+        addModuleStatus(proxy, "proxy");
+        root.add("proxy", proxy);
+
+        JsonObject network = new JsonObject();
+        network.addProperty("sharedSecret", cfg.getString("network.shared-secret", ""));
+        JsonObject knownServers = new JsonObject();
+        ConfigurationSection section = cfg.getConfigurationSection("network.known-servers");
+        if (section != null) {
+            for (String id : section.getKeys(false)) {
+                knownServers.addProperty(id, section.getString(id, ""));
+            }
+        }
+        network.add("knownServers", knownServers);
+        addModuleStatus(network, "networkstats");
+        root.add("network", network);
+
+        return root;
+    }
+
+    private void getNetwork(HttpExchange exchange) throws IOException {
+        SwagHubWebResponses.sendJson(exchange, 200, gson.toJson(buildNetworkState()));
+    }
+
+    private void postNetwork(HttpExchange exchange) throws IOException {
+        JsonObject body = readBody(exchange);
+        if (body == null) {
+            sendError(exchange, 400, "Invalid JSON body.");
+            return;
+        }
+
+        Long pollIntervalSeconds = null;
+        List<String> proxyServers = null;
+        Long connectTimeoutTicks = null;
+        if (body.has("proxy")) {
+            JsonElement el = body.get("proxy");
+            if (!el.isJsonObject()) {
+                sendError(exchange, 400, "proxy must be an object.");
+                return;
+            }
+            JsonObject px = el.getAsJsonObject();
+            if (px.has("pollIntervalSeconds")) {
+                if (!isNumber(px.get("pollIntervalSeconds"))) {
+                    sendError(exchange, 400, "proxy.pollIntervalSeconds must be a number.");
+                    return;
+                }
+                pollIntervalSeconds = Math.max(1L, px.get("pollIntervalSeconds").getAsLong());
+            }
+            if (px.has("servers")) {
+                if (!isStringArray(px.get("servers"))) {
+                    sendError(exchange, 400, "proxy.servers must be an array of strings.");
+                    return;
+                }
+                proxyServers = toStringList(px.get("servers"));
+            }
+            if (px.has("connectTimeoutTicks")) {
+                if (!isNumber(px.get("connectTimeoutTicks"))) {
+                    sendError(exchange, 400, "proxy.connectTimeoutTicks must be a number.");
+                    return;
+                }
+                connectTimeoutTicks = Math.max(0L, px.get("connectTimeoutTicks").getAsLong());
+            }
+        }
+
+        String sharedSecret = null;
+        Map<String, String> knownServers = null;
+        if (body.has("network")) {
+            JsonElement el = body.get("network");
+            if (!el.isJsonObject()) {
+                sendError(exchange, 400, "network must be an object.");
+                return;
+            }
+            JsonObject nw = el.getAsJsonObject();
+            if (nw.has("sharedSecret")) {
+                JsonElement v = nw.get("sharedSecret");
+                if (!v.isJsonPrimitive() || !v.getAsJsonPrimitive().isString()) {
+                    sendError(exchange, 400, "network.sharedSecret must be a string.");
+                    return;
+                }
+                sharedSecret = v.getAsString();
+            }
+            if (nw.has("knownServers")) {
+                JsonElement v = nw.get("knownServers");
+                if (!v.isJsonObject()) {
+                    sendError(exchange, 400, "network.knownServers must be an object of server-id -> URL.");
+                    return;
+                }
+                knownServers = new LinkedHashMap<>();
+                for (Map.Entry<String, JsonElement> entry : v.getAsJsonObject().entrySet()) {
+                    JsonElement urlEl = entry.getValue();
+                    if (!urlEl.isJsonPrimitive() || !urlEl.getAsJsonPrimitive().isString()) {
+                        sendError(exchange, 400, "network.knownServers." + entry.getKey() + " must be a string URL.");
+                        return;
+                    }
+                    knownServers.put(entry.getKey(), urlEl.getAsString());
+                }
+            }
+        }
+
+        // ── All validation passed — apply onto the LIVE config object, save, reload.
+        //    sharedSecret is sensitive: it is set via cfg.set() like any other value but
+        //    is NEVER passed to plugin.getLogger() anywhere in this method. ──
+        var cfg = plugin.getConfig();
+        if (pollIntervalSeconds != null) {
+            cfg.set("proxy.poll-interval-seconds", pollIntervalSeconds);
+        }
+        if (proxyServers != null) {
+            cfg.set("proxy.servers", proxyServers);
+        }
+        if (connectTimeoutTicks != null) {
+            cfg.set("proxy.connect-timeout-ticks", connectTimeoutTicks);
+        }
+        if (sharedSecret != null) {
+            cfg.set("network.shared-secret", sharedSecret);
+        }
+        if (knownServers != null) {
+            cfg.set("network.known-servers", null);
+            for (Map.Entry<String, String> entry : knownServers.entrySet()) {
+                cfg.set("network.known-servers." + entry.getKey(), entry.getValue());
+            }
+        }
+
+        plugin.getConfigManager().save();
+        plugin.getModuleManager().getModule("proxy").ifPresent(Module::reload);
+        plugin.getModuleManager().getModule("networkstats").ifPresent(Module::reload);
+
+        JsonObject response = buildNetworkState();
+        response.addProperty("saved", true);
+        SwagHubWebResponses.sendJson(exchange, 200, gson.toJson(response));
+    }
+
     // ─── GET/POST /config/messages ───────────────────────────────────
 
     private static final String MESSAGES_FILE = "messages.yml";
@@ -1192,5 +1845,49 @@ public class SwagHubWebApiHandler {
         } catch (IllegalArgumentException ex) {
             return false;
         }
+    }
+
+    private static boolean isValidGameMode(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return false;
+        }
+        try {
+            GameMode.valueOf(raw.trim().toUpperCase(Locale.ROOT));
+            return true;
+        } catch (IllegalArgumentException ex) {
+            return false;
+        }
+    }
+
+    private static boolean isValidParticle(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return false;
+        }
+        try {
+            Particle.valueOf(raw.trim().toUpperCase(Locale.ROOT));
+            return true;
+        } catch (IllegalArgumentException ex) {
+            return false;
+        }
+    }
+
+    private static boolean isValidSound(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return false;
+        }
+        try {
+            Sound.valueOf(raw.trim().toUpperCase(Locale.ROOT));
+            return true;
+        } catch (IllegalArgumentException ex) {
+            return false;
+        }
+    }
+
+    private static boolean isValidCommandBlockerMode(String raw) {
+        return "blacklist".equalsIgnoreCase(raw) || "whitelist".equalsIgnoreCase(raw);
+    }
+
+    private static boolean isValidWdlAction(String raw) {
+        return "kick".equalsIgnoreCase(raw) || "warn".equalsIgnoreCase(raw);
     }
 }

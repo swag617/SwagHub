@@ -131,12 +131,13 @@ body {
 .field-row { display: flex; align-items: center; gap: .6rem; margin-bottom: .7rem; }
 .field-row label { font-family: var(--mono); font-size: .74rem; color: var(--text-muted);
   text-transform: uppercase; letter-spacing: .05em; min-width: 160px; }
-.field-row input[type=number], .field-row input[type=text], .field-row select {
+.field-row input[type=number], .field-row input[type=text], .field-row input[type=password], .field-row select {
   padding: .45rem .65rem; background: var(--bg); border: 1px solid var(--border);
   border-radius: 7px; color: var(--text); font-family: var(--mono); font-size: .84rem;
   outline: none;
 }
 .field-row input[type=number] { width: 140px; }
+.field-row input[type=password] { width: 320px; }
 .field-row input:focus, .field-row select:focus { border-color: var(--purple); }
 
 .editor-field-row { display: flex; align-items: center; gap: .6rem; margin-bottom: .9rem; flex-wrap: wrap; }
@@ -187,6 +188,20 @@ textarea:focus { border-color: var(--purple); }
 .zone-fields input:focus { border-color: var(--purple); }
 .zone-fields .zone-field-name input[type=text] { width: 160px; }
 .zone-fields .zone-field-world input[type=text] { width: 140px; }
+
+.kv-fields { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .5rem; align-items: flex-end; }
+.kv-fields .kv-field { display: flex; flex-direction: column; gap: .25rem; }
+.kv-fields .kv-field label {
+  font-family: var(--mono); font-size: .68rem; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.kv-fields input[type=text] {
+  padding: .4rem .6rem; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text); font-family: var(--mono); font-size: .82rem; outline: none;
+}
+.kv-fields input:focus { border-color: var(--purple); }
+.kv-fields .kv-field-id input[type=text] { width: 140px; }
+.kv-fields .kv-field-url input[type=text] { width: 340px; }
 
 .yield-banner {
   background: rgba(240,192,96,.1); border: 1px solid rgba(240,192,96,.35); color: var(--gold);
