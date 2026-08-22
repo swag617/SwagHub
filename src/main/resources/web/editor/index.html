@@ -27,6 +27,8 @@
     <button class="tab-btn" data-tab="tab-scoreboard">Scoreboard</button>
     <button class="tab-btn" data-tab="tab-tablist">Tablist</button>
     <button class="tab-btn" data-tab="tab-announcements">Announcements</button>
+    <button class="tab-btn" data-tab="tab-worldprotection">World Protection</button>
+    <button class="tab-btn" data-tab="tab-messages">Messages</button>
 </nav>
 
 <main class="content">
@@ -226,6 +228,71 @@
         <div class="editor-actions">
             <button class="btn btn-primary" id="an-save-btn">Save &amp; Reload</button>
             <span class="save-status" id="an-save-status"></span>
+        </div>
+    </section>
+
+    <!-- ─── World Protection ───────────────────────────────── -->
+    <section id="tab-worldprotection" class="tab-content hidden">
+        <h2>World Protection</h2>
+        <div class="yield-banner hidden" id="wp-yield-banner"></div>
+        <p class="hint">Every check below only applies in the worlds listed under Core Options &rarr; Hub Worlds.</p>
+
+        <div class="editor-block">
+            <h3>Blocks &amp; Items</h3>
+            <div class="field-row"><label for="wp-deny-block-break">deny-block-break</label><input type="checkbox" id="wp-deny-block-break"></div>
+            <div class="field-row"><label for="wp-deny-block-place">deny-block-place</label><input type="checkbox" id="wp-deny-block-place"></div>
+            <div class="field-row"><label for="wp-deny-item-drop">deny-item-drop</label><input type="checkbox" id="wp-deny-item-drop"></div>
+            <div class="field-row"><label for="wp-deny-item-pickup">deny-item-pickup</label><input type="checkbox" id="wp-deny-item-pickup"></div>
+            <div class="field-row"><label for="wp-deny-leaf-decay">deny-leaf-decay</label><input type="checkbox" id="wp-deny-leaf-decay"></div>
+            <div class="field-row"><label for="wp-deny-fire-spread">deny-fire-spread</label><input type="checkbox" id="wp-deny-fire-spread"></div>
+            <div class="field-row"><label for="wp-deny-block-burn">deny-block-burn</label><input type="checkbox" id="wp-deny-block-burn"></div>
+            <div class="field-row"><label for="wp-deny-tnt">deny-tnt</label><input type="checkbox" id="wp-deny-tnt"></div>
+            <div class="field-row"><label for="wp-deny-mob-spawning">deny-mob-spawning</label><input type="checkbox" id="wp-deny-mob-spawning"></div>
+        </div>
+
+        <div class="editor-block">
+            <h3>Damage &amp; PvP</h3>
+            <div class="field-row"><label for="wp-disable-hunger">disable-hunger</label><input type="checkbox" id="wp-disable-hunger"></div>
+            <div class="field-row"><label for="wp-disable-fall-damage">disable-fall-damage</label><input type="checkbox" id="wp-disable-fall-damage"></div>
+            <div class="field-row"><label for="wp-disable-all-damage">disable-all-damage</label><input type="checkbox" id="wp-disable-all-damage"></div>
+            <p class="hint">Master switch — if enabled, players take no damage of any kind in hub worlds, superseding fall-damage/PvP below.</p>
+            <div class="field-row"><label for="wp-disable-pvp">disable-pvp</label><input type="checkbox" id="wp-disable-pvp"></div>
+        </div>
+
+        <div class="editor-block">
+            <h3>PvP Zones</h3>
+            <p class="hint">Two-corner cuboid exceptions where PvP is allowed even while disable-pvp is on elsewhere in that world.</p>
+            <div id="wp-zones-list"></div>
+            <button class="btn btn-ghost btn-sm" id="wp-add-zone-btn">+ Add Zone</button>
+        </div>
+
+        <div class="editor-block">
+            <h3>Weather &amp; Time</h3>
+            <div class="field-row"><label for="wp-lock-weather">lock-weather</label><input type="checkbox" id="wp-lock-weather"></div>
+            <div class="field-row"><label for="wp-clear-weather">clear-weather</label><input type="checkbox" id="wp-clear-weather"></div>
+            <div class="field-row"><label for="wp-lock-time">lock-time</label><input type="checkbox" id="wp-lock-time"></div>
+            <div class="field-row">
+                <label for="wp-fixed-time">fixed-time</label>
+                <input type="number" id="wp-fixed-time" min="0" max="24000" value="6000">
+            </div>
+            <p class="hint">0 = dawn, 6000 = noon, 12000 = dusk, 18000 = midnight.</p>
+        </div>
+
+        <div class="editor-actions">
+            <button class="btn btn-primary" id="wp-save-btn">Save &amp; Reload</button>
+            <span class="save-status" id="wp-save-status"></span>
+        </div>
+    </section>
+
+    <!-- ─── Messages ───────────────────────────────────────── -->
+    <section id="tab-messages" class="tab-content hidden">
+        <h2>Messages</h2>
+        <p class="hint">Every value is parsed as MiniMessage (hex colors, gradients, and legacy-style tags are all supported). <code>prefix</code> is prepended automatically to messages sent through the plugin's message util.</p>
+        <div id="msg-fields-container"></div>
+
+        <div class="editor-actions">
+            <button class="btn btn-primary" id="msg-save-btn">Save &amp; Reload</button>
+            <span class="save-status" id="msg-save-status"></span>
         </div>
     </section>
 

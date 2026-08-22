@@ -163,6 +163,31 @@ textarea:focus { border-color: var(--purple); }
 .save-status.show { opacity: 1; }
 .save-status.error { color: var(--danger); }
 
+.msg-field { margin-bottom: .9rem; }
+.msg-field label {
+  display: block; font-family: var(--mono); font-size: .74rem; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .05em; margin-bottom: .3rem;
+}
+.msg-field input[type=text] { width: 100%; }
+
+.zone-fields { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .5rem; }
+.zone-fields .zone-field { display: flex; flex-direction: column; gap: .25rem; }
+.zone-fields .zone-field label {
+  font-family: var(--mono); font-size: .68rem; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.zone-fields input[type=text] {
+  padding: .4rem .6rem; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text); font-family: var(--mono); font-size: .82rem; outline: none;
+}
+.zone-fields input[type=number] {
+  padding: .4rem .6rem; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text); font-family: var(--mono); font-size: .82rem; outline: none; width: 90px;
+}
+.zone-fields input:focus { border-color: var(--purple); }
+.zone-fields .zone-field-name input[type=text] { width: 160px; }
+.zone-fields .zone-field-world input[type=text] { width: 140px; }
+
 .yield-banner {
   background: rgba(240,192,96,.1); border: 1px solid rgba(240,192,96,.35); color: var(--gold);
   border-radius: 8px; padding: .7rem 1rem; margin-bottom: 1rem; font-size: .85rem;

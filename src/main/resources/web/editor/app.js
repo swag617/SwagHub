@@ -74,7 +74,9 @@ var TAB_LOADERS = {
     'tab-core': loadCore,
     'tab-scoreboard': loadScoreboard,
     'tab-tablist': loadTablist,
-    'tab-announcements': loadAnnouncements
+    'tab-announcements': loadAnnouncements,
+    'tab-worldprotection': loadWorldProtection,
+    'tab-messages': loadMessages
 };
 
 document.querySelectorAll('.tab-btn').forEach(function(btn) {
@@ -594,6 +596,262 @@ document.getElementById('an-save-btn').addEventListener('click', function() {
         showSaveStatus('an-save-status', true, 'Saved & reloaded.');
     }).catch(function(e) {
         showSaveStatus('an-save-status', false, e.message);
+    });
+});
+
+// ─── World Protection ────────────────────────────────────────────
+
+var wpModel = null;
+
+var WP_BOOL_FIELDS = [
+    'denyBlockBreak', 'denyBlockPlace', 'disableHunger', 'disableFallDamage',
+    'disableAllDamage', 'disablePvp', 'lockWeather', 'clearWeather', 'lockTime',
+    'denyMobSpawning', 'denyItemDrop', 'denyItemPickup', 'denyLeafDecay',
+    'denyFireSpread', 'denyBlockBurn', 'denyTnt'
+];
+
+function wpFieldId(key) {
+    // denyBlockBreak -> wp-deny-block-break (mirrors the Java-side camelToKebab helper).
+    return 'wp-' + key.replace(/([A-Z])/g, function(m) { return '-' + m.toLowerCase(); });
+}
+
+function loadWorldProtection() {
+    apiFetch('api/config/world-protection').then(function(d) {
+        wpModel = d;
+        WP_BOOL_FIELDS.forEach(function(key) {
+            document.getElementById(wpFieldId(key)).checked = !!d[key];
+        });
+        document.getElementById('wp-fixed-time').value = (d.fixedTime === undefined || d.fixedTime === null) ? 6000 : d.fixedTime;
+        updateYieldBanner('wp-yield-banner', d);
+        renderZones(d.pvpZones || []);
+    }).catch(function(e) {
+        showSaveStatus('wp-save-status', false, e.message);
+    });
+}
+
+function renderZones(zones) {
+    var list = document.getElementById('wp-zones-list');
+    list.innerHTML = '';
+    if (!zones.length) {
+        list.innerHTML = '<div class="muted">No PvP zones configured — disable-pvp (if on) applies everywhere in hub worlds.</div>';
+        return;
+    }
+    zones.forEach(function(zone, idx) {
+        var block = document.createElement('div');
+        block.className = 'entry-block wp-zone-block';
+
+        var header = document.createElement('div');
+        header.className = 'entry-block-header';
+        var label = document.createElement('span');
+        label.textContent = 'Zone #' + (idx + 1);
+        var removeBtn = document.createElement('button');
+        removeBtn.className = 'btn btn-danger btn-sm';
+        removeBtn.textContent = 'Remove';
+        removeBtn.addEventListener('click', function() {
+            syncZonesFromForm();
+            wpModel.pvpZones.splice(idx, 1);
+            renderZones(wpModel.pvpZones);
+        });
+        header.appendChild(label);
+        header.appendChild(removeBtn);
+        block.appendChild(header);
+
+        var fields = document.createElement('div');
+        fields.className = 'zone-fields';
+        fields.appendChild(zoneTextField('zone-field-name', 'name', zone.name || ''));
+        fields.appendChild(zoneTextField('zone-field-world', 'world', zone.world || ''));
+        ['corner1', 'corner2'].forEach(function(corner) {
+            ['x', 'y', 'z'].forEach(function(axis) {
+                var c = zone[corner] || {};
+                fields.appendChild(zoneNumberField(corner + '-' + axis, corner + '.' + axis, c[axis]));
+            });
+        });
+        block.appendChild(fields);
+
+        list.appendChild(block);
+    });
+}
+
+function zoneTextField(cssClass, label, value) {
+    var wrap = document.createElement('div');
+    wrap.className = 'zone-field ' + cssClass;
+    var lbl = document.createElement('label');
+    lbl.textContent = label;
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'wp-zone-' + cssClass;
+    input.value = value;
+    wrap.appendChild(lbl);
+    wrap.appendChild(input);
+    return wrap;
+}
+
+function zoneNumberField(dataKey, label, value) {
+    var wrap = document.createElement('div');
+    wrap.className = 'zone-field';
+    var lbl = document.createElement('label');
+    lbl.textContent = label;
+    var input = document.createElement('input');
+    input.type = 'number';
+    input.className = 'wp-zone-coord';
+    input.dataset.key = dataKey;
+    input.value = (value === undefined || value === null) ? 0 : value;
+    wrap.appendChild(lbl);
+    wrap.appendChild(input);
+    return wrap;
+}
+
+function syncZonesFromForm() {
+    var blocks = document.querySelectorAll('#wp-zones-list .wp-zone-block');
+    var zones = [];
+    blocks.forEach(function(block) {
+        var name = block.querySelector('.wp-zone-zone-field-name').value;
+        var world = block.querySelector('.wp-zone-zone-field-world').value;
+        var coords = {};
+        block.querySelectorAll('.wp-zone-coord').forEach(function(inp) {
+            coords[inp.dataset.key] = parseFloat(inp.value) || 0;
+        });
+        zones.push({
+            name: name,
+            world: world,
+            corner1: {x: coords['corner1.x'], y: coords['corner1.y'], z: coords['corner1.z']},
+            corner2: {x: coords['corner2.x'], y: coords['corner2.y'], z: coords['corner2.z']}
+        });
+    });
+    wpModel.pvpZones = zones;
+}
+
+document.getElementById('wp-add-zone-btn').addEventListener('click', function() {
+    syncZonesFromForm();
+    wpModel.pvpZones.push({
+        name: 'zone-' + (wpModel.pvpZones.length + 1),
+        world: 'world',
+        corner1: {x: 0, y: 0, z: 0},
+        corner2: {x: 0, y: 0, z: 0}
+    });
+    renderZones(wpModel.pvpZones);
+});
+
+document.getElementById('wp-save-btn').addEventListener('click', function() {
+    syncZonesFromForm();
+    var body = {fixedTime: parseInt(document.getElementById('wp-fixed-time').value, 10) || 0, pvpZones: wpModel.pvpZones};
+    WP_BOOL_FIELDS.forEach(function(key) {
+        body[key] = document.getElementById(wpFieldId(key)).checked;
+    });
+    apiFetch('api/config/world-protection', {method: 'POST', body: JSON.stringify(body)}).then(function(d) {
+        wpModel = d;
+        WP_BOOL_FIELDS.forEach(function(key) {
+            document.getElementById(wpFieldId(key)).checked = !!d[key];
+        });
+        document.getElementById('wp-fixed-time').value = d.fixedTime;
+        updateYieldBanner('wp-yield-banner', d);
+        renderZones(d.pvpZones || []);
+        showSaveStatus('wp-save-status', true, 'Saved & reloaded.');
+        loadStatus();
+    }).catch(function(e) {
+        showSaveStatus('wp-save-status', false, e.message);
+    });
+});
+
+// ─── Messages ────────────────────────────────────────────────────
+
+var msgModel = null;
+
+// Purely cosmetic grouping for readability — every key returned by the API is
+// rendered regardless of whether it's listed here (see the "Other" fallback group
+// below), so a message key added by a later build step never silently disappears
+// from this editor even before this list is updated to know about it.
+var MESSAGE_GROUPS = [
+    {title: 'General', keys: ['prefix', 'no-permission', 'reload-complete', 'unknown-subcommand', 'player-only-command', 'module-disabled']},
+    {title: 'Spawn / Lobby', keys: ['setlobby-set', 'lobby-not-set', 'lobby-teleporting-now', 'lobby-teleporting-in', 'lobby-teleport-cancelled']},
+    {title: 'Join Settings', keys: ['first-join-message']},
+    {title: 'Proxy Service', keys: ['server-offline', 'proxy-module-disabled']},
+    {title: 'Menus / Server Selector', keys: ['menu-not-found', 'menu-no-permission', 'menus-module-disabled', 'player-not-found']},
+    {title: 'Scoreboard', keys: ['scoreboard-toggled-on', 'scoreboard-toggled-off', 'scoreboard-module-disabled']},
+    {title: 'Fly / Gamemode / Vanish', keys: [
+        'fly-enabled', 'fly-disabled', 'fly-already-enabled-elsewhere',
+        'flyspeed-usage', 'flyspeed-changed', 'flyspeed-changed-other',
+        'gamemode-changed', 'gamemode-changed-other',
+        'vanish-enabled', 'vanish-disabled', 'vanish-enabled-other', 'vanish-disabled-other'
+    ]},
+    {title: 'Chat Controls', keys: ['lockchat-toggled-on', 'lockchat-toggled-off', 'chat-locked-blocked', 'chat-cooldown-blocked', 'command-blocked']},
+    {title: 'Player Hider', keys: ['player-hider-cycled', 'player-hider-cooldown']},
+    {title: 'Anti-WorldDownloader', keys: ['wdl-kicked', 'wdl-warned']},
+    {title: 'Holograms', keys: [
+        'holograms-module-disabled', 'hologram-created', 'hologram-already-exists', 'hologram-deleted',
+        'hologram-not-found', 'hologram-line-added', 'hologram-line-updated', 'hologram-invalid-index',
+        'hologram-cannot-remove-last-line', 'hologram-moved', 'hologram-list-header', 'hologram-list-empty'
+    ]},
+    {title: 'Proxy Portals', keys: [
+        'portals-module-disabled', 'portal-wand-given', 'portal-wand-corner1-set', 'portal-wand-corner2-set',
+        'portal-created', 'portal-already-exists', 'portal-no-selection', 'portal-different-worlds',
+        'portal-deleted', 'portal-not-found', 'portal-list-header', 'portal-list-empty'
+    ]}
+];
+
+function loadMessages() {
+    apiFetch('api/config/messages').then(function(d) {
+        msgModel = d;
+        renderMessageFields(d);
+    }).catch(function(e) {
+        showSaveStatus('msg-save-status', false, e.message);
+    });
+}
+
+function renderMessageFields(data) {
+    var container = document.getElementById('msg-fields-container');
+    container.innerHTML = '';
+    var seen = {};
+
+    MESSAGE_GROUPS.forEach(function(group) {
+        var groupKeys = group.keys.filter(function(k) { return Object.prototype.hasOwnProperty.call(data, k); });
+        if (!groupKeys.length) return;
+        container.appendChild(buildMessageGroupBlock(group.title, groupKeys, data));
+        groupKeys.forEach(function(k) { seen[k] = true; });
+    });
+
+    var otherKeys = Object.keys(data).filter(function(k) { return !seen[k]; }).sort();
+    if (otherKeys.length) {
+        container.appendChild(buildMessageGroupBlock('Other', otherKeys, data));
+    }
+}
+
+function buildMessageGroupBlock(title, keys, data) {
+    var block = document.createElement('div');
+    block.className = 'editor-block';
+    var h3 = document.createElement('h3');
+    h3.textContent = title;
+    block.appendChild(h3);
+    keys.forEach(function(key) {
+        var field = document.createElement('div');
+        field.className = 'msg-field';
+        var label = document.createElement('label');
+        label.setAttribute('for', 'msg-' + key);
+        label.textContent = key;
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.id = 'msg-' + key;
+        input.className = 'msg-input';
+        input.dataset.key = key;
+        input.value = data[key] || '';
+        field.appendChild(label);
+        field.appendChild(input);
+        block.appendChild(field);
+    });
+    return block;
+}
+
+document.getElementById('msg-save-btn').addEventListener('click', function() {
+    var body = {};
+    document.querySelectorAll('#msg-fields-container .msg-input').forEach(function(input) {
+        body[input.dataset.key] = input.value;
+    });
+    apiFetch('api/config/messages', {method: 'POST', body: JSON.stringify(body)}).then(function(d) {
+        msgModel = d;
+        renderMessageFields(d);
+        showSaveStatus('msg-save-status', true, 'Saved & reloaded.');
+    }).catch(function(e) {
+        showSaveStatus('msg-save-status', false, e.message);
     });
 });
 

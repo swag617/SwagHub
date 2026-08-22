@@ -87,6 +87,8 @@ public class SwagHubWebApiHandler {
                 case "/config/scoreboard" -> dispatch(exchange, method, this::getScoreboard, this::postScoreboard);
                 case "/config/tablist" -> dispatch(exchange, method, this::getTablist, this::postTablist);
                 case "/config/announcements" -> dispatch(exchange, method, this::getAnnouncements, this::postAnnouncements);
+                case "/config/world-protection" -> dispatch(exchange, method, this::getWorldProtection, this::postWorldProtection);
+                case "/config/messages" -> dispatch(exchange, method, this::getMessages, this::postMessages);
                 default -> SwagHubWebResponses.sendJson(exchange, 404, jsonError("Unknown endpoint"));
             }
         } catch (Exception e) {
@@ -758,6 +760,277 @@ public class SwagHubWebApiHandler {
 
         JsonObject response = announcementsToJson(out);
         addModuleStatus(response, "announcements");
+        response.addProperty("saved", true);
+        SwagHubWebResponses.sendJson(exchange, 200, gson.toJson(response));
+    }
+
+    // ─── GET/POST /config/world-protection ──────────────────────────
+
+    /**
+     * Reads world-protection.* straight off {@code plugin.getConfig()} — the SAME live,
+     * already-loaded {@link org.bukkit.configuration.file.FileConfiguration} object
+     * {@code /config/core} above reads/writes, NOT a fresh file load. This matters for
+     * the write side ({@link #postWorldProtection}): every field is applied via {@code
+     * cfg.set(...)} onto that live object and only the keys present in the request body
+     * are ever touched, so a save here can never silently wipe {@code server-role},
+     * {@code hub-worlds}, {@code modules}, {@code compatibility}, or any other
+     * config.yml section this endpoint doesn't know about — the exact bug class a
+     * from-scratch {@code YamlConfiguration} rebuild caused in SwagTournaments.
+     */
+    private JsonObject buildWorldProtectionState() {
+        var cfg = plugin.getConfig();
+        JsonObject root = new JsonObject();
+        root.addProperty("denyBlockBreak", cfg.getBoolean("world-protection.deny-block-break", true));
+        root.addProperty("denyBlockPlace", cfg.getBoolean("world-protection.deny-block-place", true));
+        root.addProperty("disableHunger", cfg.getBoolean("world-protection.disable-hunger", true));
+        root.addProperty("disableFallDamage", cfg.getBoolean("world-protection.disable-fall-damage", true));
+        root.addProperty("disableAllDamage", cfg.getBoolean("world-protection.disable-all-damage", false));
+        root.addProperty("disablePvp", cfg.getBoolean("world-protection.disable-pvp", true));
+        root.add("pvpZones", pvpZonesToJson(cfg.getMapList("world-protection.pvp-zones")));
+        root.addProperty("lockWeather", cfg.getBoolean("world-protection.lock-weather", true));
+        root.addProperty("clearWeather", cfg.getBoolean("world-protection.clear-weather", true));
+        root.addProperty("lockTime", cfg.getBoolean("world-protection.lock-time", true));
+        root.addProperty("fixedTime", cfg.getLong("world-protection.fixed-time", 6000L));
+        root.addProperty("denyMobSpawning", cfg.getBoolean("world-protection.deny-mob-spawning", true));
+        root.addProperty("denyItemDrop", cfg.getBoolean("world-protection.deny-item-drop", true));
+        root.addProperty("denyItemPickup", cfg.getBoolean("world-protection.deny-item-pickup", true));
+        root.addProperty("denyLeafDecay", cfg.getBoolean("world-protection.deny-leaf-decay", true));
+        root.addProperty("denyFireSpread", cfg.getBoolean("world-protection.deny-fire-spread", true));
+        root.addProperty("denyBlockBurn", cfg.getBoolean("world-protection.deny-block-burn", true));
+        root.addProperty("denyTnt", cfg.getBoolean("world-protection.deny-tnt", true));
+        return root;
+    }
+
+    /** Mirrors {@code WorldProtectionModule#readSettings}'s own tolerant parsing — one malformed zone never aborts the rest. */
+    private JsonArray pvpZonesToJson(List<Map<?, ?>> rawZones) {
+        JsonArray arr = new JsonArray();
+        for (Map<?, ?> zoneMap : rawZones) {
+            try {
+                Map<?, ?> c1 = (Map<?, ?>) zoneMap.get("corner1");
+                Map<?, ?> c2 = (Map<?, ?>) zoneMap.get("corner2");
+                JsonObject zoneObj = new JsonObject();
+                zoneObj.addProperty("name", String.valueOf(zoneMap.get("name")));
+                zoneObj.addProperty("world", String.valueOf(zoneMap.get("world")));
+                zoneObj.add("corner1", cornerToJson(c1));
+                zoneObj.add("corner2", cornerToJson(c2));
+                arr.add(zoneObj);
+            } catch (Exception ex) {
+                plugin.getLogger().warning("Web editor: skipping malformed entry in world-protection.pvp-zones: " + zoneMap);
+            }
+        }
+        return arr;
+    }
+
+    private JsonObject cornerToJson(Map<?, ?> corner) {
+        JsonObject obj = new JsonObject();
+        obj.addProperty("x", ((Number) corner.get("x")).doubleValue());
+        obj.addProperty("y", ((Number) corner.get("y")).doubleValue());
+        obj.addProperty("z", ((Number) corner.get("z")).doubleValue());
+        return obj;
+    }
+
+    private void getWorldProtection(HttpExchange exchange) throws IOException {
+        JsonObject root = buildWorldProtectionState();
+        addModuleStatus(root, "world-protection");
+        SwagHubWebResponses.sendJson(exchange, 200, gson.toJson(root));
+    }
+
+    private static final String[] WORLD_PROTECTION_BOOLEAN_KEYS = {
+            "denyBlockBreak", "denyBlockPlace", "disableHunger", "disableFallDamage",
+            "disableAllDamage", "disablePvp", "lockWeather", "clearWeather", "lockTime",
+            "denyMobSpawning", "denyItemDrop", "denyItemPickup", "denyLeafDecay",
+            "denyFireSpread", "denyBlockBurn", "denyTnt"
+    };
+
+    private void postWorldProtection(HttpExchange exchange) throws IOException {
+        JsonObject body = readBody(exchange);
+        if (body == null) {
+            sendError(exchange, 400, "Invalid JSON body.");
+            return;
+        }
+
+        // ── Validate everything BEFORE touching any config state (§10.4/§7.4). ──
+        Map<String, Boolean> boolFields = new LinkedHashMap<>();
+        for (String key : WORLD_PROTECTION_BOOLEAN_KEYS) {
+            if (body.has(key)) {
+                JsonElement el = body.get(key);
+                if (!el.isJsonPrimitive() || !el.getAsJsonPrimitive().isBoolean()) {
+                    sendError(exchange, 400, key + " must be a boolean.");
+                    return;
+                }
+                boolFields.put(key, el.getAsBoolean());
+            }
+        }
+
+        Long fixedTime = null;
+        if (body.has("fixedTime")) {
+            JsonElement el = body.get("fixedTime");
+            if (!isNumber(el)) {
+                sendError(exchange, 400, "fixedTime must be a number.");
+                return;
+            }
+            fixedTime = el.getAsLong();
+        }
+
+        List<Map<String, Object>> zonesOut = null;
+        if (body.has("pvpZones")) {
+            JsonElement el = body.get("pvpZones");
+            if (!el.isJsonArray()) {
+                sendError(exchange, 400, "pvpZones must be an array.");
+                return;
+            }
+            zonesOut = new ArrayList<>();
+            int idx = 0;
+            for (JsonElement zoneEl : el.getAsJsonArray()) {
+                idx++;
+                String field = "pvpZones[" + idx + "]";
+                if (!zoneEl.isJsonObject()) {
+                    sendError(exchange, 400, field + " must be an object.");
+                    return;
+                }
+                JsonObject zoneObj = zoneEl.getAsJsonObject();
+                if (!zoneObj.has("name") || !zoneObj.get("name").isJsonPrimitive()) {
+                    sendError(exchange, 400, field + ".name is required.");
+                    return;
+                }
+                if (!zoneObj.has("world") || !zoneObj.get("world").isJsonPrimitive()) {
+                    sendError(exchange, 400, field + ".world is required.");
+                    return;
+                }
+                Map<String, Object> c1 = parseCorner(zoneObj, "corner1");
+                if (c1 == null) {
+                    sendError(exchange, 400, field + ".corner1 must have numeric x, y, z.");
+                    return;
+                }
+                Map<String, Object> c2 = parseCorner(zoneObj, "corner2");
+                if (c2 == null) {
+                    sendError(exchange, 400, field + ".corner2 must have numeric x, y, z.");
+                    return;
+                }
+                Map<String, Object> zoneMap = new LinkedHashMap<>();
+                zoneMap.put("name", zoneObj.get("name").getAsString());
+                zoneMap.put("world", zoneObj.get("world").getAsString());
+                zoneMap.put("corner1", c1);
+                zoneMap.put("corner2", c2);
+                zonesOut.add(zoneMap);
+            }
+        }
+
+        // ── All validation passed — apply onto the LIVE config object (never a blank
+        //    rebuild), save, reload. Only keys present in the body are ever touched. ──
+        var cfg = plugin.getConfig();
+        for (Map.Entry<String, Boolean> entry : boolFields.entrySet()) {
+            cfg.set("world-protection." + camelToKebab(entry.getKey()), entry.getValue());
+        }
+        if (fixedTime != null) {
+            cfg.set("world-protection.fixed-time", fixedTime);
+        }
+        if (zonesOut != null) {
+            cfg.set("world-protection.pvp-zones", zonesOut);
+        }
+
+        plugin.getConfigManager().save();
+        plugin.getModuleManager().getModule("world-protection").ifPresent(Module::reload);
+
+        JsonObject response = buildWorldProtectionState();
+        addModuleStatus(response, "world-protection");
+        response.addProperty("saved", true);
+        SwagHubWebResponses.sendJson(exchange, 200, gson.toJson(response));
+    }
+
+    /** Returns a {@code {x,y,z}} map if {@code zoneObj.<cornerKey>} is a valid numeric-triple object, otherwise {@code null}. */
+    private Map<String, Object> parseCorner(JsonObject zoneObj, String cornerKey) {
+        if (!zoneObj.has(cornerKey) || !zoneObj.get(cornerKey).isJsonObject()) {
+            return null;
+        }
+        JsonObject c = zoneObj.getAsJsonObject(cornerKey);
+        if (!isNumber(c.get("x")) || !isNumber(c.get("y")) || !isNumber(c.get("z"))) {
+            return null;
+        }
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("x", c.get("x").getAsDouble());
+        map.put("y", c.get("y").getAsDouble());
+        map.put("z", c.get("z").getAsDouble());
+        return map;
+    }
+
+    /** {@code "denyBlockBreak"} -&gt; {@code "deny-block-break"} — the config.yml key-naming convention used throughout this file. */
+    private static String camelToKebab(String camel) {
+        StringBuilder sb = new StringBuilder();
+        for (char c : camel.toCharArray()) {
+            if (Character.isUpperCase(c)) {
+                sb.append('-').append(Character.toLowerCase(c));
+            } else {
+                sb.append(c);
+            }
+        }
+        return sb.toString();
+    }
+
+    // ─── GET/POST /config/messages ───────────────────────────────────
+
+    private static final String MESSAGES_FILE = "messages.yml";
+
+    /**
+     * Every message key is a flat top-level string in messages.yml (confirmed by
+     * reading the resource file — no nested sections exist there), so this simply
+     * enumerates {@code yaml.getKeys(false)} rather than hardcoding the key list —
+     * any message key added by a future build step shows up automatically without a
+     * code change here.
+     */
+    private JsonObject messagesToJson(YamlConfiguration yaml) {
+        JsonObject root = new JsonObject();
+        for (String key : yaml.getKeys(false)) {
+            root.addProperty(key, yaml.getString(key, ""));
+        }
+        return root;
+    }
+
+    private void getMessages(HttpExchange exchange) throws IOException {
+        File file = new File(plugin.getDataFolder(), MESSAGES_FILE);
+        YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
+        SwagHubWebResponses.sendJson(exchange, 200, gson.toJson(messagesToJson(yaml)));
+    }
+
+    private void postMessages(HttpExchange exchange) throws IOException {
+        JsonObject body = readBody(exchange);
+        if (body == null) {
+            sendError(exchange, 400, "Invalid JSON body.");
+            return;
+        }
+
+        // ── Validate everything BEFORE touching any file state. ──
+        for (Map.Entry<String, JsonElement> entry : body.entrySet()) {
+            JsonElement v = entry.getValue();
+            if (!v.isJsonPrimitive() || !v.getAsJsonPrimitive().isString()) {
+                sendError(exchange, 400, "messages." + entry.getKey() + " must be a string.");
+                return;
+            }
+        }
+
+        // Load the EXISTING file from disk (never a blank YamlConfiguration) and only
+        // .set() the keys present in the request body — anything this editor doesn't
+        // know about (e.g. a key added by a later build step before the web editor
+        // catches up) is left exactly as-is on disk. This is the same safe pattern
+        // /config/core uses against plugin.getConfig() (a live object, incrementally
+        // mutated) — messages.yml just isn't already loaded as a long-lived object
+        // anywhere in this plugin, so it's re-read from disk here instead. Deliberately
+        // NOT the scoreboard/tablist/announcements pattern above (a from-scratch
+        // YamlConfiguration rebuilt from the whole POST body) — see the SwagTournaments
+        // post-mortem in the class javadoc for exactly why a flat, hand-typed key list
+        // like this one must never risk that.
+        File file = new File(plugin.getDataFolder(), MESSAGES_FILE);
+        YamlConfiguration existing = YamlConfiguration.loadConfiguration(file);
+        for (Map.Entry<String, JsonElement> entry : body.entrySet()) {
+            existing.set(entry.getKey(), entry.getValue().getAsString());
+        }
+
+        if (!saveYaml(exchange, existing, MESSAGES_FILE)) {
+            return;
+        }
+        plugin.getMessageUtil().load();
+
+        JsonObject response = messagesToJson(existing);
         response.addProperty("saved", true);
         SwagHubWebResponses.sendJson(exchange, 200, gson.toJson(response));
     }
