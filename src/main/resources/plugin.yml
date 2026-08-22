@@ -44,6 +44,10 @@ softdepend: [floodgate, PlaceholderAPI, LuckPerms]
 # auth), never a direct database connection. Deliberately kept isolated from each
 # server's own database so e.g. an SMP server and a Factions server never share economy
 # data just because the hub wants to display both.
+#
+# NOTE (Patch 2 scope — see DECISIONS.md's Patch 2 section): added "/flyspeed" as its
+# OWN top-level command (not an "/ah" subcommand) — same standalone-command precedent
+# as "/fly"/"/gamemode"/"/vanish" from step 6, since it lives in the same FlyModule.
 commands:
   swaghub:
     description: SwagHub admin command
@@ -62,6 +66,10 @@ commands:
     description: Toggle flight for yourself or another player
     usage: /fly [player]
     permission: swaghub.command.fly
+  flyspeed:
+    description: Set your (or another player's) flight speed
+    usage: /flyspeed <1-10> [player]
+    permission: swaghub.command.flyspeed
   gamemode:
     description: Change your (or another player's) game mode
     usage: /gamemode <survival|creative|adventure|spectator> [player]
@@ -120,6 +128,13 @@ commands:
 # new web editor (§7.2) — GETs under /swagapi/swaghub/api/ require .view, POSTs require
 # .edit. Both default op, matching every other admin-facing permission in this file;
 # neither is a command permission (no new "/ah ..." subcommand was added this step).
+#
+# NOTE (Patch 2 scope — see DECISIONS.md's Patch 2 section): added
+# swaghub.bypass.joingamemode (restores a player's last gamemode/flight state on join
+# instead of JoinSettingsModule's forced lobby default — see PlayerStateModule's
+# javadoc for the bug this fixes) and swaghub.command.flyspeed /
+# swaghub.command.flyspeed.others (the new "/flyspeed" command in FlyModule), all
+# three default op, matching this file's existing admin-facing default.
 permissions:
   swaghub.command.reload:
     description: Reload SwagHub's configuration and modules
@@ -141,6 +156,9 @@ permissions:
     default: op
   swaghub.bypass.pvp:
     description: Bypass the hub's PvP protection (always allowed to fight)
+    default: op
+  swaghub.bypass.joingamemode:
+    description: Restore your last gamemode and flight state on join instead of the hub's forced default
     default: op
   swaghub.command.proxy:
     description: Run the /ah proxy servers admin diagnostic
@@ -168,6 +186,12 @@ permissions:
     default: op
   swaghub.command.fly.others:
     description: Toggle another player's flight via /fly <player>
+    default: op
+  swaghub.command.flyspeed:
+    description: Set your own flight speed via /flyspeed <1-10>
+    default: op
+  swaghub.command.flyspeed.others:
+    description: Set another player's flight speed via /flyspeed <1-10> <player>
     default: op
   swaghub.command.gamemode:
     description: Change your own game mode via /gamemode

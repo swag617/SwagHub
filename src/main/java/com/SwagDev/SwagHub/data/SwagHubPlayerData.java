@@ -23,6 +23,20 @@ import java.util.concurrent.CompletableFuture;
  * self-describing and safe to hand-edit/inspect — see {@code SwagHubDatabase}'s
  * schema-migration notes for how these two columns are safely added to an
  * already-existing Step 5 table on upgrade.</p>
+ *
+ * <p><b>Player-state additions</b> ({@link Data#lastGameMode}, {@link
+ * Data#wasFlying}, {@link Data#flySpeed} — see {@code PlayerStateModule}): fixes the
+ * "flying in creative, log off, relog back into forced-survival and fall to your
+ * death" bug caused by {@code JoinSettingsModule}'s unconditional
+ * {@code set-gamemode} reset having no memory of what a player was actually doing
+ * before they quit. {@link Data#lastGameMode} stores {@link
+ * org.bukkit.GameMode#name()} (nullable/blank — meaning "nothing saved yet", e.g. a
+ * player who has never quit since this field was added), same self-describing-string
+ * convention as {@link Data#playerHiderState} above rather than an ordinal int.
+ * {@link Data#flySpeed} defaults to {@code 0.1f}, Bukkit's own
+ * {@code Player#setFlySpeed} default, so a player who has never touched
+ * {@code /flyspeed} restores to exactly the value they'd already have without this
+ * feature existing at all.</p>
  */
 public class SwagHubPlayerData implements PlayerDataModule {
 
@@ -30,6 +44,9 @@ public class SwagHubPlayerData implements PlayerDataModule {
         public boolean scoreboardEnabled = true;
         public boolean vanished = false;
         public String playerHiderState = "ALL_VISIBLE";
+        public String lastGameMode = null;
+        public boolean wasFlying = false;
+        public float flySpeed = 0.1f;
     }
 
     @Override
@@ -37,7 +54,8 @@ public class SwagHubPlayerData implements PlayerDataModule {
         return CompletableFuture.supplyAsync(() -> {
             Data d = new Data();
             try (Connection conn = db.getConnection()) {
-                String sql = "SELECT scoreboard_enabled, vanished, player_hider_state FROM swaghub_player_data WHERE uuid = ?";
+                String sql = "SELECT scoreboard_enabled, vanished, player_hider_state, last_game_mode, "
+                        + "was_flying, fly_speed FROM swaghub_player_data WHERE uuid = ?";
                 try (PreparedStatement ps = conn.prepareStatement(sql)) {
                     ps.setString(1, uuid.toString());
                     try (ResultSet rs = ps.executeQuery()) {
@@ -46,6 +64,9 @@ public class SwagHubPlayerData implements PlayerDataModule {
                             d.vanished = rs.getInt("vanished") == 1;
                             String state = rs.getString("player_hider_state");
                             d.playerHiderState = state != null ? state : "ALL_VISIBLE";
+                            d.lastGameMode = rs.getString("last_game_mode");
+                            d.wasFlying = rs.getInt("was_flying") == 1;
+                            d.flySpeed = rs.getFloat("fly_speed");
                         }
                     }
                 }
@@ -65,18 +86,24 @@ public class SwagHubPlayerData implements PlayerDataModule {
             try (Connection conn = db.getConnection()) {
                 String sql;
                 if (db.isMySQL()) {
-                    sql = "INSERT INTO swaghub_player_data (uuid, scoreboard_enabled, vanished, player_hider_state) "
-                            + "VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE scoreboard_enabled = VALUES(scoreboard_enabled), "
-                            + "vanished = VALUES(vanished), player_hider_state = VALUES(player_hider_state)";
+                    sql = "INSERT INTO swaghub_player_data (uuid, scoreboard_enabled, vanished, player_hider_state, "
+                            + "last_game_mode, was_flying, fly_speed) VALUES (?, ?, ?, ?, ?, ?, ?) "
+                            + "ON DUPLICATE KEY UPDATE scoreboard_enabled = VALUES(scoreboard_enabled), "
+                            + "vanished = VALUES(vanished), player_hider_state = VALUES(player_hider_state), "
+                            + "last_game_mode = VALUES(last_game_mode), was_flying = VALUES(was_flying), "
+                            + "fly_speed = VALUES(fly_speed)";
                 } else {
-                    sql = "INSERT OR REPLACE INTO swaghub_player_data (uuid, scoreboard_enabled, vanished, player_hider_state) "
-                            + "VALUES (?, ?, ?, ?)";
+                    sql = "INSERT OR REPLACE INTO swaghub_player_data (uuid, scoreboard_enabled, vanished, "
+                            + "player_hider_state, last_game_mode, was_flying, fly_speed) VALUES (?, ?, ?, ?, ?, ?, ?)";
                 }
                 try (PreparedStatement ps = conn.prepareStatement(sql)) {
                     ps.setString(1, uuid.toString());
                     ps.setInt(2, d.scoreboardEnabled ? 1 : 0);
                     ps.setInt(3, d.vanished ? 1 : 0);
                     ps.setString(4, d.playerHiderState);
+                    ps.setString(5, d.lastGameMode);
+                    ps.setInt(6, d.wasFlying ? 1 : 0);
+                    ps.setFloat(7, d.flySpeed);
                     ps.executeUpdate();
                 }
             } catch (Exception e) {

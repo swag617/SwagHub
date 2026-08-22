@@ -94,6 +94,17 @@
 #  like Java players; menus render as the standard chest GUI for everyone). Neither
 #  needs a "modules:" entry — they're per-platform BEHAVIOR toggles inside modules
 #  that already exist, not new modules of their own.
+#
+#  Patch 2 note (gamemode/flight/fly-speed persistence — see DECISIONS.md's Patch 2
+#  section): one more module exists now — "player-state" (PlayerStateModule), which
+#  fixes the "flying in creative, log off, relog into forced-survival, fall to your
+#  death" bug. ALWAYS defaults to ENABLED regardless of server-role above — a general
+#  safety feature, not hub-specific, same "utility module" precedent as holograms/
+#  portals/webeditor. Has NO settings of its own beyond enable/disable: restoration is
+#  gated entirely by the new "swaghub.bypass.joingamemode" permission (see plugin.yml),
+#  not a config toggle, so nothing of its own lives in this file beyond this comment
+#  block and its "modules:" toggle (left absent below, same as every other utility
+#  module).
 
 # --------------------------------------------------------------------------------
 # Server role (see §6.2 of the design doc)

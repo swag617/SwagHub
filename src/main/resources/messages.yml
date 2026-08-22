@@ -92,6 +92,19 @@ fly-disabled: "<red>Flight disabled.</red>"
 # see FlyModule's javadoc for the stand-down reasoning.
 fly-already-enabled-elsewhere: "<yellow>Flight is already enabled by your game mode or another plugin — nothing to toggle.</yellow>"
 
+# --------------------------------------------------------------------------------
+# Fly Speed (module: fly — Patch 2, see DECISIONS.md's Patch 2 section)
+# --------------------------------------------------------------------------------
+# Sent by "/flyspeed" on bad input (missing/non-numeric/out-of-range speed argument).
+flyspeed-usage: "<red>Usage: </red><yellow>/flyspeed <1-10> [player]</yellow>"
+
+# %speed% is substituted with the new speed level (1-10, not the raw float).
+flyspeed-changed: "<green>Your flight speed was set to <yellow>%speed%</yellow>.</green>"
+
+# Sent to the SENDER (not the target) when setting another player's flight speed.
+# %speed% and %player% are substituted.
+flyspeed-changed-other: "<green><yellow>%player%</yellow>'s flight speed was set to <yellow>%speed%</yellow>.</green>"
+
 # %gamemode% is substituted with the new game mode's display name (e.g. "Creative").
 gamemode-changed: "<green>Your game mode was set to <yellow>%gamemode%</yellow>.</green>"
 

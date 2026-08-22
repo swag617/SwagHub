@@ -54,7 +54,12 @@ public class MessageUtil {
             plugin.getLogger().log(Level.WARNING, "Failed to load bundled messages.yml defaults.", ex);
         }
 
-        prefix = parse(messages.getString("prefix", "<gray>[<gradient:#7b2ff7:#f107a3>SwagHub</gradient>]</gray> "));
+        String configuredPrefix = messages.getString("prefix", "<gray>[<gradient:#7b2ff7:#f107a3>SwagHub</gradient>]</gray> ");
+        var prefixService = plugin.getPrefixService();
+        String resolvedPrefix = (prefixService != null)
+                ? prefixService.getPrefix("SwagHub", configuredPrefix)
+                : configuredPrefix;
+        prefix = parse(resolvedPrefix);
     }
 
     /** Parses a raw MiniMessage string with no placeholder substitution. */

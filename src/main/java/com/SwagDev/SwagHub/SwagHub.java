@@ -6,6 +6,7 @@ import com.SwagDev.SwagAPI.api.IEconomyService;
 import com.SwagDev.SwagAPI.api.IEventBusService;
 import com.SwagDev.SwagAPI.api.IMessagingService;
 import com.SwagDev.SwagAPI.api.IPlayerDataService;
+import com.SwagDev.SwagAPI.api.IPrefixService;
 import com.SwagDev.SwagAPI.api.IUpdateService;
 import com.SwagDev.SwagAPI.api.IWebService;
 import com.SwagDev.SwagHub.action.ActionParser;
@@ -47,6 +48,7 @@ import com.SwagDev.SwagHub.modules.launchpad.LaunchpadModule;
 import com.SwagDev.SwagHub.modules.menu.MenuModule;
 import com.SwagDev.SwagHub.modules.networkstats.NetworkStatsModule;
 import com.SwagDev.SwagHub.modules.playerhider.PlayerHiderModule;
+import com.SwagDev.SwagHub.modules.playerstate.PlayerStateModule;
 import com.SwagDev.SwagHub.modules.portal.PortalModule;
 import com.SwagDev.SwagHub.modules.protection.WorldProtectionModule;
 import com.SwagDev.SwagHub.modules.proxy.ProxyModule;
@@ -148,6 +150,14 @@ import org.bukkit.plugin.java.JavaPlugin;
  * #finishStartup(long)}, which runs on the first server tick — by which point every
  * plugin on the server has already finished its own {@code onEnable()}, regardless of
  * this plugin's position in {@code plugin.yml}'s dependency-sorted enable order.</p>
+ *
+ * <p><b>Patch 2 scope (post-launch fix — see DECISIONS.md's Patch 2 section):</b>
+ * {@link PlayerStateModule} is registered (persists a player's gamemode/flight/
+ * fly-speed across a relog, restoring it — behind the new {@code
+ * swaghub.bypass.joingamemode} permission — instead of letting {@link
+ * JoinSettingsModule}'s forced lobby-gamemode reset silently drop a staff member out
+ * of a flying creative session), and {@link FlyModule} gains a new {@code
+ * /flyspeed <1-10> [player]} command that writes into the same persisted field.</p>
  */
 public final class SwagHub extends JavaPlugin {
 
@@ -173,6 +183,7 @@ public final class SwagHub extends JavaPlugin {
     private IEventBusService eventBusService;
     private IUpdateService updateService;
     private IWebService webService;
+    private IPrefixService prefixService;
 
     // ─── Core managers ───
     private ConfigManager configManager;
@@ -447,6 +458,11 @@ public final class SwagHub extends JavaPlugin {
             updateService = updateProvider.getProvider();
         }
 
+        var prefixProvider = sm.getRegistration(IPrefixService.class);
+        if (prefixProvider != null) {
+            prefixService = prefixProvider.getProvider();
+        }
+
         return true;
     }
 
@@ -548,6 +564,17 @@ public final class SwagHub extends JavaPlugin {
         // like the ones directly above, no ordering dependency on anything else.
         networkStatsModule = new NetworkStatsModule(this);
         moduleManager.register(networkStatsModule);
+
+        // Patch 2 — persists gamemode/flight/fly-speed across a relog (see
+        // PlayerStateModule's own javadoc for the bug this fixes). Always enabled
+        // regardless of server-role, like the utility modules above. No ordering
+        // dependency on anything else — its onJoin handler runs at
+        // EventPriority.MONITOR, which Bukkit always runs after JoinSettingsModule's
+        // HIGH-priority handler regardless of registration order. Nothing else in this
+        // class needs to reference it later, so it's registered inline (no field),
+        // matching the step 2 trio's (SpawnModule/WorldProtectionModule/
+        // JoinSettingsModule) inline-registration precedent above.
+        moduleManager.register(new PlayerStateModule(this));
     }
 
     public static SwagHub getInstance() {
@@ -584,6 +611,10 @@ public final class SwagHub extends JavaPlugin {
 
     public IWebService getWebService() {
         return webService;
+    }
+
+    public IPrefixService getPrefixService() {
+        return prefixService;
     }
 
     public ConfigManager getConfigManager() {

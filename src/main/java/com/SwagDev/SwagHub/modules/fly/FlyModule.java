@@ -2,6 +2,7 @@ package com.SwagDev.SwagHub.modules.fly;
 
 import com.SwagDev.SwagHub.SwagHub;
 import com.SwagDev.SwagHub.compat.ServerRole;
+import com.SwagDev.SwagHub.data.SwagHubPlayerData;
 import com.SwagDev.SwagHub.module.Module;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
@@ -49,11 +50,27 @@ import java.util.concurrent.ConcurrentHashMap;
  * §5.10's text — flight stays on until explicitly toggled off again, matching how
  * EssentialsX's own {@code /fly} behaves (and when EssentialsX is present, this whole
  * module yields to it anyway per the compat registry).</p>
+ *
+ * <p><b>Patch 2 addition — {@code /flyspeed <1-10> [player]}:</b> lives in this
+ * module rather than a new one, since {@code FlyModule} already owns flight for the
+ * hub. {@code swaghub.command.flyspeed} (self, default {@code op}), {@code
+ * swaghub.command.flyspeed.others} (target another player, default {@code op}) —
+ * same self/others argument-parsing shape as {@code /fly} itself, just with the
+ * required speed argument occupying the slot {@code /fly}'s optional player argument
+ * does not need. The 1-10 integer maps onto Bukkit's {@code setFlySpeed} float range
+ * via {@code speed / 10.0f} (1 = vanilla's own default {@code 0.1}, 10 = Bukkit's max
+ * {@code 1.0}). The resulting speed is ALSO written into {@link
+ * SwagHubPlayerData.Data#flySpeed} (the same field {@code PlayerStateModule} restores
+ * on join — see that module's javadoc) so a chosen fly speed survives a relog exactly
+ * like a chosen gamemode does, without needing {@code swaghub.bypass.joingamemode} —
+ * fly speed persistence has no safety implication, unlike gamemode/flight restoration.</p>
  */
 public class FlyModule extends Module implements Listener, CommandExecutor {
 
     private static final String PERMISSION_SELF = "swaghub.command.fly";
     private static final String PERMISSION_OTHERS = "swaghub.command.fly.others";
+    private static final String PERMISSION_FLYSPEED_SELF = "swaghub.command.flyspeed";
+    private static final String PERMISSION_FLYSPEED_OTHERS = "swaghub.command.flyspeed.others";
 
     private final Set<UUID> grantedByUs = ConcurrentHashMap.newKeySet();
     private CommandExecutor disabledFallback;
@@ -75,6 +92,12 @@ public class FlyModule extends Module implements Listener, CommandExecutor {
             command.setExecutor(this);
         } else {
             plugin.getLogger().warning("Could not find the 'fly' command — check plugin.yml.");
+        }
+        PluginCommand flySpeedCommand = plugin.getCommand("flyspeed");
+        if (flySpeedCommand != null) {
+            flySpeedCommand.setExecutor(this);
+        } else {
+            plugin.getLogger().warning("Could not find the 'flyspeed' command — check plugin.yml.");
         }
     }
 
@@ -98,6 +121,10 @@ public class FlyModule extends Module implements Listener, CommandExecutor {
         if (command != null) {
             command.setExecutor(disabledFallback);
         }
+        PluginCommand flySpeedCommand = plugin.getCommand("flyspeed");
+        if (flySpeedCommand != null) {
+            flySpeedCommand.setExecutor(disabledFallback);
+        }
     }
 
     @Override
@@ -107,6 +134,10 @@ public class FlyModule extends Module implements Listener, CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (label.equalsIgnoreCase("flyspeed")) {
+            return onFlySpeedCommand(sender, args);
+        }
+
         Player target;
         if (args.length == 0) {
             if (!sender.hasPermission(PERMISSION_SELF)) {
@@ -173,5 +204,85 @@ public class FlyModule extends Module implements Listener, CommandExecutor {
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         grantedByUs.remove(event.getPlayer().getUniqueId());
+    }
+
+    /**
+     * {@code /flyspeed <1-10> [player]} — see class javadoc for the self/others
+     * argument-parsing shape and the {@code speed / 10.0f} mapping. Same "no args
+     * needs PERMISSION_SELF + must be a Player" / "target arg present needs
+     * PERMISSION_OTHERS + Bukkit.getPlayerExact lookup, player-not-found message"
+     * shape as {@link #onCommand}'s own {@code /fly} handling, adapted for the extra
+     * required speed argument: {@code args.length == 1} is self (arg 0 is the
+     * speed), {@code args.length == 2} is others (arg 0 is still the speed, arg 1 is
+     * the target) — the speed argument always occupies slot 0 regardless of whether
+     * a target follows it.
+     */
+    private boolean onFlySpeedCommand(CommandSender sender, String[] args) {
+        if (args.length != 1 && args.length != 2) {
+            plugin.getMessageUtil().send(sender, "flyspeed-usage");
+            return true;
+        }
+
+        Player target;
+        if (args.length == 1) {
+            if (!sender.hasPermission(PERMISSION_FLYSPEED_SELF)) {
+                plugin.getMessageUtil().send(sender, "no-permission");
+                return true;
+            }
+            if (!(sender instanceof Player self)) {
+                plugin.getMessageUtil().send(sender, "player-only-command");
+                return true;
+            }
+            target = self;
+        } else {
+            if (!sender.hasPermission(PERMISSION_FLYSPEED_OTHERS)) {
+                plugin.getMessageUtil().send(sender, "no-permission");
+                return true;
+            }
+            target = Bukkit.getPlayerExact(args[1]);
+            if (target == null) {
+                plugin.getMessageUtil().send(sender, "player-not-found", Map.of("player", args[1]));
+                return true;
+            }
+        }
+
+        int level;
+        try {
+            level = Integer.parseInt(args[0]);
+        } catch (NumberFormatException ex) {
+            plugin.getMessageUtil().send(sender, "flyspeed-usage");
+            return true;
+        }
+        if (level < 1 || level > 10) {
+            plugin.getMessageUtil().send(sender, "flyspeed-usage");
+            return true;
+        }
+
+        float flySpeed = level / 10.0f;
+        target.setFlySpeed(flySpeed);
+        persistFlySpeed(target, flySpeed);
+
+        plugin.getMessageUtil().send(target, "flyspeed-changed", Map.of("speed", String.valueOf(level)));
+        if (!target.equals(sender)) {
+            plugin.getMessageUtil().send(sender, "flyspeed-changed-other",
+                    Map.of("speed", String.valueOf(level), "player", target.getName()));
+        }
+        return true;
+    }
+
+    /**
+     * Writes {@code flySpeed} into {@link SwagHubPlayerData.Data#flySpeed} — the same
+     * field {@code PlayerStateModule} restores on join (see class javadoc's Patch 2
+     * note) — via the same {@code getModuleData}/{@code setModuleData} accessor
+     * pattern {@code VanishModule} uses for its own persisted field.
+     */
+    private void persistFlySpeed(Player target, float flySpeed) {
+        SwagHubPlayerData.Data data = plugin.getPlayerDataService()
+                .getModuleData(target.getUniqueId(), "swaghub", SwagHubPlayerData.Data.class);
+        if (data == null) {
+            data = new SwagHubPlayerData.Data();
+        }
+        data.flySpeed = flySpeed;
+        plugin.getPlayerDataService().setModuleData(target.getUniqueId(), "swaghub", data);
     }
 }

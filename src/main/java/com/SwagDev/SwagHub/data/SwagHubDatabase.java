@@ -34,6 +34,14 @@ import java.util.logging.Level;
  * (fresh-install CREATE TABLE, upgrade-install ALTER TABLE) converge on the exact
  * same final schema either way. See DECISIONS.md Step 6 for the fresh-vs-upgrade
  * verification notes.</p>
+ *
+ * <p><b>Player-state schema migration (gamemode/flight/fly-speed persistence):</b>
+ * same fresh-vs-upgrade pattern as the Step 6 migration above — {@code
+ * last_game_mode}/{@code was_flying}/{@code fly_speed} are added to the {@code
+ * CREATE TABLE IF NOT EXISTS} for fresh installs AND as three more
+ * {@link #addColumnIfMissing} calls for upgrade installs, so both paths converge on
+ * the identical final schema. See {@code PlayerStateModule}'s javadoc for what these
+ * three columns are for.</p>
  */
 public class SwagHubDatabase {
 
@@ -52,7 +60,10 @@ public class SwagHubDatabase {
                         uuid TEXT PRIMARY KEY,
                         scoreboard_enabled INTEGER NOT NULL DEFAULT 1,
                         vanished INTEGER NOT NULL DEFAULT 0,
-                        player_hider_state TEXT NOT NULL DEFAULT 'ALL_VISIBLE'
+                        player_hider_state TEXT NOT NULL DEFAULT 'ALL_VISIBLE',
+                        last_game_mode TEXT,
+                        was_flying INTEGER NOT NULL DEFAULT 0,
+                        fly_speed REAL NOT NULL DEFAULT 0.1
                     )""");
             plugin.getLogger().info("Database table initialized.");
         } catch (SQLException ex) {
@@ -69,6 +80,13 @@ public class SwagHubDatabase {
         // alarming for what is actually expected, harmless "duplicate column" behavior.
         addColumnIfMissing("vanished", "INTEGER NOT NULL DEFAULT 0");
         addColumnIfMissing("player_hider_state", "TEXT NOT NULL DEFAULT 'ALL_VISIBLE'");
+
+        // Player-state migration (see this class's own javadoc above): a pre-existing
+        // install from before this feature existed has this table WITHOUT these three
+        // columns either — same independently-guarded ADD COLUMN treatment.
+        addColumnIfMissing("last_game_mode", "TEXT");
+        addColumnIfMissing("was_flying", "INTEGER NOT NULL DEFAULT 0");
+        addColumnIfMissing("fly_speed", "REAL NOT NULL DEFAULT 0.1");
     }
 
     private void addColumnIfMissing(String column, String definition) {
