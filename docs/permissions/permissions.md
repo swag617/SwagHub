@@ -47,7 +47,7 @@ All SwagHub permission nodes, transcribed directly from `plugin.yml`.
 | `swaghub.doublejump` | op | Use the double jump ability |
 | `swaghub.teleportbow` | op | Shoot bows that teleport you to their landing point |
 | `swaghub.playerhider.alwaysvisible` | op | Always stay visible to players in the `RANKS_ONLY` player-hider state |
-| `swaghub.vanish.see` | op | See players who are currently vanished (passive — not a command permission) |
+| `swaghub.vanish.see` | op | See players who are currently vanished (passive; not a command permission) |
 
 ## Web Editor Permissions
 
@@ -64,19 +64,19 @@ All SwagHub permission nodes, transcribed directly from `plugin.yml`.
 
 ## Dynamic Permission Families
 
-Two permission families are registered **programmatically at runtime** — one node per admin-defined id, default `true` — rather than being pre-declared in `plugin.yml`, since the ids are entirely open-ended (new items/menus can be added without a plugin update):
+Two permission families are registered **programmatically at runtime** (one node per admin-defined id, default `true`) rather than being pre-declared in `plugin.yml`, since the ids are entirely open-ended (new items/menus can be added without a plugin update):
 
 | Pattern | Example | Source |
 |---|---|---|
 | `swaghub.item.<id>` | `swaghub.item.server-selector` | One per entry in `items.yml` |
 | `swaghub.menu.<id>` | `swaghub.menu.main-menu` | One per file under `selector-menus/` |
 
-Both are re-registered on every `/ah reload` — a renamed or removed item/menu never leaves a stale permission node behind, since the old id set is unregistered first.
+Both are re-registered on every `/ah reload`; a renamed or removed item/menu never leaves a stale permission node behind, since the old id set is unregistered first.
 
 ## Default Values
 
-- `true` — every player has this by default; revoke it from groups that shouldn't have access.
-- `op` — only server operators have this by default.
+- `true`: every player has this by default; revoke it from groups that shouldn't have access.
+- `op`: only server operators have this by default.
 
 ## Configuring via a Permission Plugin
 

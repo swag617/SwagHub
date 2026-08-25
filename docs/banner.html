@@ -349,7 +349,7 @@
     <div class="hero-content">
       <div class="hero-label">Minecraft Plugin &nbsp;·&nbsp; Paper 1.21.x</div>
       <div class="hero-title">🧭 SwagHub</div>
-      <div class="hero-sub">A next-generation hub/lobby core plugin — join items, hub-specific scoreboard &amp; tablist, live network-wide player counts, and first-class BungeeCord + Velocity support with zero proxy-side plugin required.</div>
+      <div class="hero-sub">A next-generation hub/lobby core plugin with join items, hub-specific scoreboard &amp; tablist, live network-wide player counts, and first-class BungeeCord + Velocity support with zero proxy-side plugin required.</div>
       <div class="hero-pills">
         <span class="hero-pill">Paper 1.21.x</span>
         <span class="hero-pill">Java 21</span>
@@ -361,7 +361,7 @@
 
   <!-- ECOSYSTEM NOTICE -->
   <div class="notice">
-    <strong>Part of the Swag ecosystem:</strong> SwagHub hard-depends on <strong>SwagAPI</strong> for shared services (player data, database, web hosting, event bus) and is purpose-built to coexist politely alongside <strong>SwagCore</strong> on the same network — a <code style="background:#252525;color:#667eea;padding:1px 6px;border-radius:4px;">server-role</code> setting plus automatic conflict auto-yield means the two never fight over scoreboard, tablist, vanish, or announcements. See <a href="./index.html#/ecosystem/coexistence">Coexistence with SwagCore</a>.
+    <strong>Part of the Swag ecosystem:</strong> SwagHub hard-depends on <strong>SwagAPI</strong> for shared services (player data, database, web hosting, event bus) and is purpose-built to coexist politely alongside <strong>SwagCore</strong> on the same network. A <code style="background:#252525;color:#667eea;padding:1px 6px;border-radius:4px;">server-role</code> setting plus automatic conflict auto-yield means the two never fight over scoreboard, tablist, vanish, or announcements. See <a href="./index.html#/ecosystem/coexistence">Coexistence with SwagCore</a>.
   </div>
 
   <!-- CORE FEATURES -->
@@ -371,14 +371,14 @@
       <div class="card">
         <span class="card-icon">🏠</span>
         <div class="card-title">Hub Essentials</div>
-        <div class="card-desc"><code>/setlobby</code> + <code>/lobby</code> with a configurable delay, spawn-on-join, void-fall rescue, and full world protection — written to disk <strong>immediately</strong>, never only on shutdown.</div>
+        <div class="card-desc"><code>/setlobby</code> + <code>/lobby</code> with a configurable delay, spawn-on-join, void-fall rescue, and full world protection, written to disk <strong>immediately</strong> and never only on shutdown.</div>
       </div>
     </a>
     <a class="card-link" href="./index.html#/core-features/join-items">
       <div class="card">
         <span class="card-icon">🧭</span>
         <div class="card-title">Join Items</div>
-        <div class="card-desc">Fully config-driven hotbar items — MiniMessage names, skull textures, glow, and the same action system used everywhere else in SwagHub. Identified only by a PDC tag, never material.</div>
+        <div class="card-desc">Fully config-driven hotbar items: MiniMessage names, skull textures, glow, and the same action system used everywhere else in SwagHub. Identified only by a PDC tag, never material.</div>
       </div>
     </a>
     <a class="card-link" href="./index.html#/core-features/scoreboard-tablist">
@@ -392,7 +392,7 @@
       <div class="card">
         <span class="card-icon">🌐</span>
         <div class="card-title">Network-Aware Player Counts</div>
-        <div class="card-desc">Live per-server and network-total counts over BungeeCord/Velocity's <code>bungeecord:main</code> channel — no proxy-side plugin, no database bridge required.</div>
+        <div class="card-desc">Live per-server and network-total counts over BungeeCord/Velocity's <code>bungeecord:main</code> channel, with no proxy-side plugin and no database bridge required.</div>
       </div>
     </a>
   </div>
@@ -404,7 +404,7 @@
       <div class="wide-text">
         <div class="wide-tag">bungeecord:main</div>
         <div class="wide-title">One Channel, Both Proxies</div>
-        <div class="wide-desc">SwagHub talks <strong>Connect / PlayerCount / GetServers</strong> over the same plugin-messaging channel BungeeCord has always used — Velocity answers it natively via its built-in compatibility layer, so the identical implementation drives <strong>%swaghub_count_total%</strong> and per-server counts against either proxy with no proxy-side jar at all.</div>
+        <div class="wide-desc">SwagHub talks <strong>Connect / PlayerCount / GetServers</strong> over the same plugin-messaging channel BungeeCord has always used. Velocity answers it natively via its built-in compatibility layer, so the identical implementation drives <strong>%swaghub_count_total%</strong> and per-server counts against either proxy with no proxy-side jar at all.</div>
       </div>
       <div class="tax-stack">
         <div class="tax-pill"><span class="tdot"></span> Live Per-Server Counts</div>
@@ -422,7 +422,7 @@
       <div class="card">
         <span class="card-icon">🪂</span>
         <div class="card-title">Movement &amp; Extras</div>
-        <div class="card-desc">Double jump, launchpads, a teleport bow, and a cyclable player-hider — each permission-gated and region-aware.</div>
+        <div class="card-desc">Double jump, launchpads, a teleport bow, and a cyclable player-hider, each permission-gated and region-aware.</div>
       </div>
     </a>
     <a class="card-link" href="./index.html#/core-features/holograms-and-portals">
@@ -436,7 +436,7 @@
       <div class="card">
         <span class="card-icon">📱</span>
         <div class="card-title">Bedrock / Floodgate</div>
-        <div class="card-desc">Reflective Floodgate detection with a complete no-op fallback — zero behavior change on a Java-only server, platform placeholders when Floodgate is present.</div>
+        <div class="card-desc">Reflective Floodgate detection with a complete no-op fallback: zero behavior change on a Java-only server, platform placeholders when Floodgate is present.</div>
       </div>
     </a>
   </div>

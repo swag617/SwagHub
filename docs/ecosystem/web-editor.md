@@ -1,23 +1,23 @@
 # Web Editor
 
-When SwagAPI's shared web service is running, SwagHub's hub-options editor is served at `/swagapi/swaghub/` — no separate port, no separate login. SwagHub never runs its own HTTP server or authentication; it registers into SwagAPI's existing one.
+When SwagAPI's shared web service is running, SwagHub's hub-options editor is served at `/swagapi/swaghub/`: no separate port, no separate login. SwagHub never runs its own HTTP server or authentication; it registers into SwagAPI's existing one.
 
-`module: webeditor` — always enabled regardless of `server-role`, a utility module like proxy/menus/holograms/portals. **Never** auto-yielded to any plugin — nothing else in the Swag ecosystem exposes this specific plugin's own config over HTTP.
+`module: webeditor`: always enabled regardless of `server-role`, a utility module like proxy/menus/holograms/portals. **Never** auto-yielded to any plugin, since nothing else in the Swag ecosystem exposes this specific plugin's own config over HTTP.
 
 ## Access
 
-- `swaghub.dashboard.view` (default `op`) — read-only access to the status page and editors.
-- `swaghub.dashboard.edit` (default `op`) — required to save changes through any editor.
+- `swaghub.dashboard.view` (default `op`): read-only access to the status page and editors.
+- `swaghub.dashboard.edit` (default `op`): required to save changes through any editor.
 
 ## What's Covered
 
 Five JSON endpoints under `/swagapi/swaghub/api/`:
 
-- A read-only **status page** — version, server role, every module's enabled/override/yielded state, proxy status, pending-update info.
+- A read-only **status page**: version, server role, every module's enabled/override/yielded state, proxy status, pending-update info.
 - Read/write editors for **core options** (server role, hub worlds, per-module enable/disable, compatibility overrides).
 - Read/write editors for **scoreboard**, **tablist**, and **announcements**.
 
-Modules currently yielded to SwagCore are reported as **read-only** in the editor, with the yield reason shown ("Managed by SwagCore") — the UI greys them out rather than letting you edit a file nothing is actually reading.
+Modules currently yielded to SwagCore are reported as **read-only** in the editor, with the yield reason shown ("Managed by SwagCore"). The UI greys them out rather than letting you edit a file nothing is actually reading.
 
 ## What's Not Covered Yet
 
@@ -25,7 +25,7 @@ Modules currently yielded to SwagCore are reported as **read-only** in the edito
 
 ## Known Limitation: Offline Permission Checks
 
-Permission checks for the web editor can only be resolved against a currently **online** player — `OfflinePlayer` doesn't expose permission lookups, and SwagHub deliberately takes no Vault dependency the way SwagCore does for this. A staff member granted `swaghub.dashboard.edit` by a permissions plugin is recognized only while they're online in-game; the same account browsing the panel while offline falls back to `isOp()`. See [Known Limitations](../troubleshooting/known-limitations.md).
+Permission checks for the web editor can only be resolved against a currently **online** player. `OfflinePlayer` doesn't expose permission lookups, and SwagHub deliberately takes no Vault dependency the way SwagCore does for this. A staff member granted `swaghub.dashboard.edit` by a permissions plugin is recognized only while they're online in-game; the same account browsing the panel while offline falls back to `isOp()`. See [Known Limitations](../troubleshooting/known-limitations.md).
 
 ## Related Pages
 

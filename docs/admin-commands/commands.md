@@ -19,12 +19,12 @@ SwagHub registers nine top-level commands. The root command is `/swaghub`, alias
 |---|---|---|
 | `reload` | `swaghub.command.reload` (op) | Reloads `config.yml`, `messages.yml`, the compatibility registry, and re-evaluates every module's enabled state. |
 | `info` | `swaghub.command.info` (true) | Prints version, server role, module count, and every yielded module + which plugin it yielded to. Also shows a pending-update line if one exists. |
-| `proxy servers` | `swaghub.command.proxy` (op) | Fires a `GetServers` query — see [Network-Aware Player Counts](../core-features/network-player-counts.md). |
+| `proxy servers` | `swaghub.command.proxy` (op) | Fires a `GetServers` query. See [Network-Aware Player Counts](../core-features/network-player-counts.md). |
 | `open <menu> [player]` | `swaghub.command.open` (true) / `.open.others` (op) | Opens a selector menu for yourself, or for `[player]` with the `.others` permission. |
 | `scoreboard` | `swaghub.command.scoreboard` (true) | Toggles your own scoreboard visibility. Player-only. |
-| `hologram <...>` | `swaghub.command.hologram` (op) | One permission gates the whole subtree — see [Holograms & Portals](../core-features/holograms-and-portals.md). |
-| `portal <...>` | `swaghub.command.portal` (op) | One permission gates the whole subtree — see [Holograms & Portals](../core-features/holograms-and-portals.md). |
-| `networkstats <server> <player>` | `swaghub.command.networkstats` (op) | Queries another server's SwagCore for a player's balance/rank/playtime/homes over HTTP — see [Network-Aware Player Counts](../core-features/network-player-counts.md#network-stats-cross-server-player-lookups). |
+| `hologram <...>` | `swaghub.command.hologram` (op) | One permission gates the whole subtree. See [Holograms & Portals](../core-features/holograms-and-portals.md). |
+| `portal <...>` | `swaghub.command.portal` (op) | One permission gates the whole subtree. See [Holograms & Portals](../core-features/holograms-and-portals.md). |
+| `networkstats <server> <player>` | `swaghub.command.networkstats` (op) | Queries another server's SwagCore for a player's balance/rank/playtime/homes over HTTP. See [Network-Aware Player Counts](../core-features/network-player-counts.md#network-stats-cross-server-player-lookups). |
 
 An unrecognized subcommand replies with an `unknown-subcommand` message rather than silently doing nothing.
 
@@ -51,7 +51,7 @@ Requires `swaghub.command.lobby` (true). Teleports you to the lobby, subject to 
 /fly <player>
 ```
 
-`swaghub.command.fly` (self, op) / `.fly.others` (op, to target `<player>`). Toggles flight. Compat-reserved — yields to SwagCore/EssentialsX when detected. See [Chat & Utility Commands](../core-features/chat-and-utility-commands.md).
+`swaghub.command.fly` (self, op) / `.fly.others` (op, to target `<player>`). Toggles flight. Compat-reserved: yields to SwagCore/EssentialsX when detected. See [Chat & Utility Commands](../core-features/chat-and-utility-commands.md).
 
 ## `/flyspeed <1-10> [player]`
 
@@ -77,7 +77,7 @@ Aliases: `/gmc` `/gms` `/gma` `/gmsp` (each infers its own target mode). `swaghu
 /vanish <player>
 ```
 
-`swaghub.command.vanish` (self, op) / `.vanish.others` (op). `swaghub.vanish.see` (op) lets a viewer see vanished players — a passive permission, not required to run the command itself.
+`swaghub.command.vanish` (self, op) / `.vanish.others` (op). `swaghub.vanish.see` (op) lets a viewer see vanished players. It's a passive permission, not required to run the command itself.
 
 ## `/lockchat`
 

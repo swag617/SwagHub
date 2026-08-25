@@ -6,30 +6,30 @@ first-class BungeeCord *and* Velocity support, MiniMessage everywhere, a fully m
 feature set, and deliberate, documented coexistence with **SwagCore**.
 
 License: **MIT** (see [`LICENSE`](LICENSE)). SwagHub hard-depends on the private,
-unpublished `SwagAPI` jar, so full public redistribution isn't in play yet — MIT is the
+unpublished `SwagAPI` jar, so full public redistribution isn't in play yet; MIT is the
 permissive default until that changes.
 
 ---
 
 ## Requirements
 
-- **Paper 1.21.x** — this is the only supported platform. No Spigot, no 1.20.x
+- **Paper 1.21.x:** this is the only supported platform. No Spigot, no 1.20.x
   backport, no Folia (yet). `pom.xml` compiles against `paper-api 1.21.1-R0.1-SNAPSHOT`
   and `plugin.yml` declares `api-version: '1.21'`; both were the de facto minimum since
   the very first build step, and TextDisplay-based holograms plus other modern Paper
-  APIs would make a 1.20.x backport costly for little benefit — matching §12 of the
+  APIs would make a 1.20.x backport costly for little benefit, matching §12 of the
   design doc's own recommendation.
 - **Java 21**.
-- **[SwagAPI](https://github.com/) 1.0.0 — hard dependency.** SwagHub declares
+- **[SwagAPI](https://github.com/) 1.0.0: hard dependency.** SwagHub declares
   `depend: [SwagAPI]` in `plugin.yml` and will refuse to enable without it (Bukkit
   enforces the load order automatically; SwagHub also double-checks at runtime that
   SwagAPI actually finished enabling, in case it's present but failed its own startup).
   SwagHub owns no database driver, no connection pool, and no player-data store of its
-  own — all of that is SwagAPI's job.
-- **Optional:** PlaceholderAPI, LuckPerms, Floodgate (soft dependencies — SwagHub
+  own; all of that is SwagAPI's job.
+- **Optional:** PlaceholderAPI, LuckPerms, Floodgate (soft dependencies; SwagHub
   degrades gracefully with all three absent). See "Bedrock / Floodgate support" below
   for what Floodgate's presence actually enables.
-- **Optional, for coexistence:** SwagCore, EssentialsX — SwagHub actively detects both
+- **Optional, for coexistence:** SwagCore, EssentialsX. SwagHub actively detects both
   and yields overlapping features automatically (see "Coexistence with SwagCore" below).
 
 ---
@@ -37,116 +37,116 @@ permissive default until that changes.
 ## Feature list
 
 Derived from the module list actually registered in `SwagHub.java` (`registerFeatureModules()`)
-and `config.yml`'s module sections — every item below genuinely exists and ships enabled
+and `config.yml`'s module sections; every item below genuinely exists and ships enabled
 by default (subject to the server-role defaults described later).
 
-**Hub essentials** — `/setlobby` / `/lobby` (configurable teleport delay + move-cancel),
+**Hub essentials:** `/setlobby` / `/lobby` (configurable teleport delay + move-cancel),
 spawn-on-join, spawn-on-void-fall (teleport instead of death), spawn-on-respawn. World
 protection toggles (block break/place, hunger, fall damage, all-damage, PvP with
 zone exceptions, weather lock, time lock, mob spawning, item drop/pickup, leaf decay,
 fire spread, block burn, TNT). Join settings (clear inventory, set gamemode, heal/feed,
 join firework, first-join private message + action-list extras).
 
-**Chat controls** — `/lockchat` (server-wide chat lock), `/clearchat`, per-player chat
-cooldown, and a command blocker (blacklist/whitelist mode) — bundled into one
+**Chat controls:** `/lockchat` (server-wide chat lock), `/clearchat`, per-player chat
+cooldown, and a command blocker (blacklist/whitelist mode), bundled into one
 `lockchat` module (plus a separate `clearchat` module, since only `clearchat` yields to
 EssentialsX).
 
-**Anti-WorldDownloader** — detects the WDL plugin-messaging channel and kicks or warns,
+**Anti-WorldDownloader:** detects the WDL plugin-messaging channel and kicks or warns,
 configurable.
 
-**Join items** — fully configurable hotbar items (material, slot, MiniMessage name/lore,
+**Join items:** fully configurable hotbar items (material, slot, MiniMessage name/lore,
 custom model data, base64/player-name/player-UUID skull textures, enchant glow,
 per-item `swaghub.item.<id>` permission), non-movable/non-droppable, restored on
 respawn and on entering a hub world. Actions run through the unified action system.
 
-**Server Selector / Custom Menus** — unlimited YAML-defined GUI menus (title, rows,
+**Server Selector / Custom Menus:** unlimited YAML-defined GUI menus (title, rows,
 filler item, per-slot items + actions, live player-count placeholders, refresh
 interval, open sound, `swaghub.menu.<id>` permission). `/ah open <menu> [player]`.
 
-**Scoreboard** — per-world MiniMessage sidebar, animated title frames, PlaceholderAPI
+**Scoreboard:** per-world MiniMessage sidebar, animated title frames, PlaceholderAPI
 support, per-player toggle (`/ah scoreboard`, persisted via SwagAPI's
 `IPlayerDataService`), configurable update interval, team-based no-flicker rendering.
 
-**Tablist** — custom header/footer, animation frames, per-world, PlaceholderAPI.
+**Tablist:** custom header/footer, animation frames, per-world, PlaceholderAPI.
 
-**Announcements** — action-based broadcasts on a per-world interval, sequential or
+**Announcements:** action-based broadcasts on a per-world interval, sequential or
 random rotation, any combination of action tags per entry.
 
-**Movement & Fun** — double jump (permission-gated, particle+sound, region-disable
+**Movement & Fun:** double jump (permission-gated, particle+sound, region-disable
 list, flight-conflict stand-down logic), launchpads (pressure-plate-triggered, config
 coordinates), teleport bow (permission-gated, any bow shot becomes a teleport arrow),
 player hider (`ALL_VISIBLE → HIDE_OTHERS → RANKS_ONLY` cycle via a join item action,
 per-player cooldown).
 
-**Holograms** — native `TextDisplay`-entity holograms (one entity per line), MiniMessage
+**Holograms:** native `TextDisplay`-entity holograms (one entity per line), MiniMessage
 + PlaceholderAPI with a refresh interval, `/ah hologram create|delete|addline|setline|
 removeline|movehere|list`, PDC-tagged so orphan cleanup on startup never touches another
 plugin's `TextDisplay`s (including SwagCore's own hologram system).
 
-**Proxy portals** — config-defined cuboids (wand-selected corners) that proxy-connect
+**Proxy portals:** config-defined cuboids (wand-selected corners) that proxy-connect
 any player who walks in, with a global per-player cooldown to prevent reconnect loops.
 `/ah portal wand|create|delete|list`.
 
-**Proxy service** — `Connect`/`ConnectOther`/`PlayerCount`/`PlayerList`/`GetServers`
+**Proxy service:** `Connect`/`ConnectOther`/`PlayerCount`/`PlayerList`/`GetServers`
 over the `bungeecord:main` channel (see "Proxy setup" below). `/ah proxy servers`
 admin diagnostic.
 
-**Commands & Vanish** — `/fly [player]`, `/gamemode` (+ `/gmc /gms /gma /gmsp`),
-`/vanish [player]` — every one of these is individually toggleable and yields to
+**Commands & Vanish:** `/fly [player]`, `/gamemode` (+ `/gmc /gms /gma /gmsp`),
+`/vanish [player]`. Every one of these is individually toggleable and yields to
 SwagCore/EssentialsX automatically when installed (see "Coexistence" below).
 
-**PlaceholderAPI expansion** — SwagHub registers its own `swaghub` expansion (see the
+**PlaceholderAPI expansion:** SwagHub registers its own `swaghub` expansion (see the
 placeholder table below) whenever PlaceholderAPI is present and enabled.
 
-**bStats metrics** — toggleable via `metrics.enabled` (default `true`). **The bStats
-plugin ID is currently a placeholder (`0`)** — as of Patch 1, this means metrics are
+**bStats metrics:** toggleable via `metrics.enabled` (default `true`). **The bStats
+plugin ID is currently a placeholder (`0`).** As of Patch 1, this means metrics are
 simply not sent at all (one `info` line explains why on startup) rather than being
 sent unattributed under id `0`. See "Known limitations" below.
 
-**Update checking** — via SwagAPI's `IUpdateService`; no separate Spigot/Modrinth
+**Update checking:** via SwagAPI's `IUpdateService`; no separate Spigot/Modrinth
 poller exists or is needed.
 
-**Developer API** — `SwagHubAPI` (obtained via `SwagHub#getAPI()`) for registering
+**Developer API:** `SwagHubAPI` (obtained via `SwagHub#getAPI()`) for registering
 custom action types and menus programmatically, plus three custom events:
 `PlayerSendToServerEvent` (cancellable), `PlayerDoubleJumpEvent` (cancellable),
 `MenuOpenEvent`.
 
-**Web editor** — see "Web editor" below.
+**Web editor:** see "Web editor" below.
 
-### Bedrock / Floodgate support (§8 of the design doc — Patch 1)
+### Bedrock / Floodgate support (§8 of the design doc, Patch 1)
 
 SwagHub is Bedrock-aware whenever the `floodgate` plugin is present and enabled,
-through a single `BedrockService` abstraction (`com.SwagDev.SwagHub.bedrock`) —
-feature code never touches Floodgate's own API classes directly, and Floodgate is
-detected reflectively (no compile-time Maven dependency on it — see DECISIONS.md's
+through a single `BedrockService` abstraction (`com.SwagDev.SwagHub.bedrock`).
+Feature code never touches Floodgate's own API classes directly, and Floodgate is
+detected reflectively (no compile-time Maven dependency on it; see DECISIONS.md's
 Patch 1 section for why). On a Java-only server with Floodgate absent, this is a
 complete no-op: zero behavior change, one debug-level log line at most.
 
-- **Detection:** `BedrockService#isBedrockPlayer(UUID)` — backed by
+- **Detection:** `BedrockService#isBedrockPlayer(UUID)`, backed by
   `FloodgateApi#isFloodgatePlayer(UUID)` when Floodgate is present, always `false`
   when it isn't.
 - **Placeholders:** `%swaghub_platform%` (`java`/`bedrock`, player-scoped),
   `%swaghub_count_bedrock%`/`%swaghub_count_java%` (online counts on THIS server by
-  platform) — see the placeholder table below.
+  platform); see the placeholder table below.
 - **Menus:** chest-GUI selector menus (§5.3) already work correctly for Bedrock
   players through Geyser and are the default for everyone. `menus.bedrock-forms`
   (config.yml, default `false`) is a documented, not-yet-implemented toggle for a
-  future native Bedrock SimpleForm renderer — enabling it logs one warning and changes
+  future native Bedrock SimpleForm renderer; enabling it logs one warning and changes
   nothing about how menus actually render.
 - **Usernames:** every player-name lookup in SwagHub (command arguments, tab-complete,
   `ConnectOther`, menu open-for-player) already passes Bedrock's `.`-prefixed
-  usernames through unmodified — verified across the whole codebase, not assumed.
+  usernames through unmodified, verified across the whole codebase, not assumed.
 - **Join items / custom model data:** CMD-based item appearances only render for
   Bedrock players with a mapped Bedrock resource pack; every shipped item still looks
-  correct (material + name) without one — see `items.yml`'s own header comment.
-- **Double jump:** `double-jump.bedrock` (config.yml, default `true`) — set to `false`
+  correct (material + name) without one. See `items.yml`'s own header comment.
+- **Double jump:** `double-jump.bedrock` (config.yml, default `true`). Set to `false`
   to disable double jump for Bedrock players specifically if double-tap-space input
   ever proves unreliable through Geyser on your network; Java players are never
   affected by this toggle either way.
 
 Live Bedrock-client verification (an actual connected Geyser/Floodgate player) remains
-**owner-verified-pending** — no Geyser/Floodgate test rig has been available in this
+**owner-verified-pending**. No Geyser/Floodgate test rig has been available in this
 project's build environment; see `TEST_CHECKLIST.md`'s Patch 1 section.
 
 ---
@@ -155,10 +155,10 @@ project's build environment; see `TEST_CHECKLIST.md`'s Patch 1 section.
 
 ### Single server (no proxy)
 
-1. Install `SwagAPI.jar` in `plugins/` — SwagHub will not enable without it.
+1. Install `SwagAPI.jar` in `plugins/`; SwagHub will not enable without it.
 2. Install `SwagHub.jar` in `plugins/`.
 3. Start the server once to generate SwagHub's default config files.
-4. Leave `proxy.enabled` alone or set `modules.proxy: false` in `config.yml` — proxy
+4. Leave `proxy.enabled` alone or set `modules.proxy: false` in `config.yml`. Proxy
    features have no effect with no proxy in front of the server, but leaving them on is
    harmless (poll cycles are skipped silently whenever no `Connect` channel exists to
    send them through).
@@ -167,14 +167,14 @@ project's build environment; see `TEST_CHECKLIST.md`'s Patch 1 section.
 ### BungeeCord network
 
 1. Install `SwagAPI.jar` + `SwagHub.jar` on every backend Paper server that should run
-   SwagHub (typically just the hub server — see "Coexistence with SwagCore" below for
+   SwagHub (typically just the hub server; see "Coexistence with SwagCore" below for
    the recommended multi-server topology).
 2. **No proxy-side plugin is required.** SwagHub's `ProxyService` talks to BungeeCord
    entirely over the plugin-messaging channel `bungeecord:main` (registered under its
-   legacy name `"BungeeCord"`) — this is the same channel BungeeCord has always used.
+   legacy name `"BungeeCord"`). This is the same channel BungeeCord has always used.
 3. In `config.yml`'s `proxy:` section, list the exact backend server names configured
    in BungeeCord's own `config.yml` under `servers:` so live player counts resolve.
-4. That's it — `Connect`/`PlayerCount`/`GetServers` all work immediately.
+4. That's it: `Connect`/`PlayerCount`/`GetServers` all work immediately.
 
 ### Velocity network
 
@@ -183,18 +183,18 @@ project's build environment; see `TEST_CHECKLIST.md`'s Patch 1 section.
    channel natively via its built-in BungeeCord-compatibility layer, so the exact same
    `BungeeChannelProxyService` implementation works against both proxies unmodified.
 3. **One thing to verify on Velocity specifically:** `bungee-plugin-message-channel`
-   must be `true` in `velocity.toml`. This is Velocity's own **default** — a stock
-   install needs no changes — but if you've deliberately turned it off, SwagHub's proxy
+   must be `true` in `velocity.toml`. This is Velocity's own **default** (a stock
+   install needs no changes), but if you've deliberately turned it off, SwagHub's proxy
    features have nothing to talk to until it's re-enabled.
 4. List backend server names under `proxy.servers` in `config.yml`, matching the
    `[servers]` block in `velocity.toml`, exactly as with BungeeCord.
 
-### `libs/SwagAPI-1.0.0.jar` — dev-time only
+### `libs/SwagAPI-1.0.0.jar`: dev-time only
 
 The `libs/` folder in this repository holds `SwagAPI-1.0.0.jar` (and a reference copy
 of `SwagCore-1.0.0.jar` used only for manual coexistence testing) as a **system-scope
 Maven dependency** so the project compiles without a private artifact repository. This
-path is **never** read by a running server — a real deployment needs `SwagAPI.jar`
+path is **never** read by a running server; a real deployment needs `SwagAPI.jar`
 (and, for coexistence, `SwagCore.jar`) placed directly in that server's own `plugins/`
 folder, installed like any other plugin.
 
@@ -211,7 +211,7 @@ feature. Two mechanisms make this automatic:
   jump, teleport bow, player hider, anti-WDL, chat lock/cooldown, clearchat, scoreboard,
   tablist, announcements, fly/gamemode/vanish commands) default OFF, while utility
   modules unique to SwagHub (holograms, custom menus, proxy service, portals,
-  launchpads) stay ON. Every default can still be overridden individually — role only
+  launchpads) stay ON. Every default can still be overridden individually; role only
   changes defaults, it never hard-locks anything.
 - **Auto-yield** (`compatibility.auto-yield: true`, default). SwagHub detects SwagCore
   and EssentialsX at startup by plugin name and automatically disables ("yields") the
@@ -221,11 +221,11 @@ feature. Two mechanisms make this automatic:
     `holograms`, `vanish`.
   - **EssentialsX** → yields `fly`, `gamemode`, `vanish`, `clearchat`.
   - Extend the registry yourself via `compatibility.conflicts.<PluginName>: [modules...]`
-    in `config.yml` — entries there are merged with (never replace) the built-in defaults.
+    in `config.yml`; entries there are merged with (never replace) the built-in defaults.
 
 Per-module overrides live under `compatibility.overrides.<module>: auto | enabled |
 disabled` (default `auto`). The **recommended hub-server setup**, when SwagCore is also
-installed on the hub (the standard topology — SwagCore runs on every backend including
+installed on the hub (the standard topology: SwagCore runs on every backend including
 the hub), ships pre-written and commented-out in `config.yml`:
 
 ```yaml
@@ -240,10 +240,10 @@ compatibility:
 ```
 
 Uncomment this block on the hub server only. On pure game servers, leave everything at
-`auto` with `server-role: game` — no overrides needed.
+`auto` with `server-role: game`: no overrides needed.
 
 Run `/ah info` at any time to see the current server role, every yielded module and
-which plugin it yielded to, and every forced override — the single place to diagnose a
+which plugin it yielded to, and every forced override: the single place to diagnose a
 misconfiguration.
 
 ---
@@ -251,9 +251,9 @@ misconfiguration.
 ## Web editor
 
 When SwagAPI's shared web service is running, SwagHub's hub-options editor is served at
-`/swagapi/swaghub/` (no separate port, no separate login — SwagHub never runs its own
+`/swagapi/swaghub/` (no separate port, no separate login: SwagHub never runs its own
 HTTP server or authentication). Requires `swaghub.dashboard.view` (reads) or
-`swaghub.dashboard.edit` (writes) — both default `op`.
+`swaghub.dashboard.edit` (writes); both default `op`.
 
 Current coverage (five JSON endpoints under `/swagapi/swaghub/api/`): a read-only status
 page (version, server role, every module's enabled/override/yielded state, proxy status,
@@ -262,7 +262,7 @@ hub-worlds, per-module enable/disable, compatibility overrides) plus **scoreboar
 **tablist**, and **announcements**. Modules currently yielded to SwagCore are reported
 as read-only with the yield reason, so the UI greys them out ("Managed by SwagCore")
 rather than letting you edit a file nothing is actually reading. Holograms, portals,
-items, and menus do **not** have a web editor yet — manage those in-game or by hand-editing
+items, and menus do **not** have a web editor yet; manage those in-game or by hand-editing
 their YAML files and running `/ah reload`.
 
 One documented limitation: permission checks for the web editor can only be resolved
@@ -316,8 +316,8 @@ Two permission **families** are registered **programmatically at runtime** (one 
 per admin-defined id, default `true`) rather than being pre-declared in `plugin.yml`,
 since the ids are open-ended:
 
-- `swaghub.item.<id>` — one per entry in `items.yml` (e.g. `swaghub.item.server-selector`).
-- `swaghub.menu.<id>` — one per file in `selector-menus/` (e.g. `swaghub.menu.main-menu`).
+- `swaghub.item.<id>`: one per entry in `items.yml` (e.g. `swaghub.item.server-selector`).
+- `swaghub.menu.<id>`: one per file in `selector-menus/` (e.g. `swaghub.menu.main-menu`).
 
 ---
 
@@ -325,7 +325,7 @@ since the ids are open-ended:
 
 SwagHub registers a PlaceholderAPI expansion with identifier **`swaghub`** whenever
 PlaceholderAPI is present and enabled (`%swaghub_<token>%`). The same resolver
-(`SwagHubPlaceholders#resolveIdentifier`) also runs internally — every `%swaghub_...%`
+(`SwagHubPlaceholders#resolveIdentifier`) also runs internally; every `%swaghub_...%`
 token in a menu/item/scoreboard/tablist/announcement/hologram line resolves even
 without PlaceholderAPI installed; PlaceholderAPI is only needed to pull in *other*
 plugins' placeholders in that same text.
@@ -334,31 +334,31 @@ plugins' placeholders in that same text.
 |---|---|
 | `%swaghub_count_total%` | Cached total online player count across the whole network |
 | `%swaghub_count_<server>%` | Cached player count for one backend server (0 if never polled) |
-| `%swaghub_status_<server>%` | `<green>Online</green>` / `<red>Offline</red>` — "online" means at least one `PlayerCount` response has been received for that server name since this server started |
-| `%swaghub_vanished%` | `true`/`false` — whether the viewing player is currently vanished |
-| `%swaghub_doublejump_enabled%` | `true`/`false` — whether SwagHub's double-jump module currently has flight granted for the viewing player |
-| `%swaghub_fly_enabled%` | `true`/`false` — same, for SwagHub's `/fly` grant |
+| `%swaghub_status_<server>%` | `<green>Online</green>` / `<red>Offline</red>`: "online" means at least one `PlayerCount` response has been received for that server name since this server started |
+| `%swaghub_vanished%` | `true`/`false`: whether the viewing player is currently vanished |
+| `%swaghub_doublejump_enabled%` | `true`/`false`: whether SwagHub's double-jump module currently has flight granted for the viewing player |
+| `%swaghub_fly_enabled%` | `true`/`false`: same, for SwagHub's `/fly` grant |
 | `%swaghub_playerhider_state%` | The player-hider state enum name, e.g. `ALL_VISIBLE`, `HIDE_OTHERS`, `RANKS_ONLY` |
-| `%swaghub_platform%` | `java` or `bedrock` — resolved via `BedrockService` (§8.1, Patch 1) |
+| `%swaghub_platform%` | `java` or `bedrock`, resolved via `BedrockService` (§8.1, Patch 1) |
 | `%swaghub_count_bedrock%` | Online Bedrock player count on THIS server (§8.1, Patch 1) |
 | `%swaghub_count_java%` | Online Java player count on THIS server (§8.1, Patch 1) |
 
 Every player-scoped token above resolves to `false` (or `""` for `playerhider_state`,
 or `java` for `platform`) rather than throwing when evaluated with no player context
-(e.g. console) — a recognized-but-unanswerable placeholder always degrades to
+(e.g. console); a recognized-but-unanswerable placeholder always degrades to
 something printable.
 
 ---
 
 ## Action syntax reference
 
-Every configurable "do something" in SwagHub — join items, menu slots, announcements,
-first-join extras — is a list of strings, each starting with a `[tag]`. Parsed by
+Every configurable "do something" in SwagHub (join items, menu slots, announcements,
+first-join extras) is a list of strings, each starting with a `[tag]`. Parsed by
 `ActionParser`, dispatched to a registered `ActionType`. An unrecognized tag or a
 malformed line logs one warning naming the problem and is skipped; it never aborts the
 rest of the sequence.
 
-**Structural tags** (handled directly by the parser, not `ActionType`s — they control
+**Structural tags** (handled directly by the parser, not `ActionType`s; they control
 sequencing/guarding rather than doing one thing):
 
 | Tag | Syntax | Behavior |
@@ -379,15 +379,15 @@ sequencing/guarding rather than doing one thing):
 | `[player]` | `[player] <command>` | Runs a command as the acting player (no leading `/`) |
 | `[console]` | `[console] <command>` | Runs a command as console |
 | `[server]` | `[server] <name>` | Proxy-connects the acting player to a backend server; logs a warning if the proxy module is disabled |
-| `[teleport]` | `[teleport] world;x;y;z` or `[teleport] world;x;y;z;yaw;pitch` | `yaw`/`pitch` are both-or-neither — omit both to keep current look direction; a bad world or non-numeric x/y/z aborts the whole action |
+| `[teleport]` | `[teleport] world;x;y;z` or `[teleport] world;x;y;z;yaw;pitch` | `yaw`/`pitch` are both-or-neither: omit both to keep current look direction; a bad world or non-numeric x/y/z aborts the whole action |
 | `[open-menu]` | `[open-menu] <menu-id>` | Opens a selector menu for the acting player |
 | `[close-menu]` | `[close-menu]` | Closes whatever inventory the acting player currently has open |
-| `[firework]` | `[firework] colors;type;flicker;trail` | `colors` — comma-separated `org.bukkit.Color` constant names or `#RRGGBB` hex, default `WHITE`; `type` — `BALL`/`BALL_LARGE`/`STAR`/`BURST`/`CREEPER`, default `BALL`; `flicker`/`trail` — booleans, default `false` |
+| `[firework]` | `[firework] colors;type;flicker;trail` | `colors`: comma-separated `org.bukkit.Color` constant names or `#RRGGBB` hex, default `WHITE`; `type`: `BALL`/`BALL_LARGE`/`STAR`/`BURST`/`CREEPER`, default `BALL`; `flicker`/`trail`: booleans, default `false` |
 | `[particle]` | `[particle] ParticleName` or `[particle] ParticleName;count;offsetX;offsetY;offsetZ` | `count` defaults to `10`; each offset defaults to `0.5`; only an invalid particle name logs a warning |
 | `[effect]` | `[effect] PotionEffectTypeName` or `[effect] PotionEffectTypeName;durationTicks;amplifier` | `durationTicks` defaults to `200` (10s); `amplifier` defaults to `0` |
 | `[cycle-player-hider]` | `[cycle-player-hider]` | Advances the acting player's player-hider state by one step |
 
-`[firework]`/`[particle]`/`[effect]` are SwagHub's own invented argument formats — the
+`[firework]`/`[particle]`/`[effect]` are SwagHub's own invented argument formats; the
 design doc names these tags as required but doesn't specify their exact syntax.
 
 Real usage examples, pulled from the shipped config files:
@@ -422,13 +422,13 @@ mvn clean package
 ```
 
 Produces `target/SwagHub-1.0.0-shaded.jar` (the shade plugin replaces the plain jar with
-this relocated/shaded artifact — bStats is the only currently-shaded dependency).
-Compiling requires two reference jars under `libs/` (see "`libs/SwagAPI-1.0.0.jar` —
+this relocated/shaded artifact; bStats is the only currently-shaded dependency).
+Compiling requires two reference jars under `libs/` (see "`libs/SwagAPI-1.0.0.jar`:
 dev-time only" above):
 
-- `libs/SwagAPI-1.0.0.jar` — compiled against as a `system`-scope dependency; hard
+- `libs/SwagAPI-1.0.0.jar`: compiled against as a `system`-scope dependency; hard
   runtime requirement.
-- `libs/SwagCore-1.0.0.jar` — kept only as a reference copy for manual coexistence
+- `libs/SwagCore-1.0.0.jar`: kept only as a reference copy for manual coexistence
   testing; never imported or shaded, SwagCore is detected at runtime by plugin name only.
 
 Versioning: `1.0.0`, declared once in `pom.xml`. No changelog or separate versioning

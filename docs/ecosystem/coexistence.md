@@ -1,6 +1,6 @@
 # Coexistence with SwagCore
 
-SwagHub is designed to run alongside **SwagCore** (the Swag ecosystem's Essentials/CMI-style plugin) on the same network — and sometimes the same server — without fighting it for any feature. Two mechanisms make this automatic.
+SwagHub is designed to run alongside **SwagCore** (the Swag ecosystem's Essentials/CMI-style plugin) on the same network, and sometimes the same server, without fighting it for any feature. Two mechanisms make this automatic.
 
 ## Server Role
 
@@ -8,7 +8,7 @@ SwagHub is designed to run alongside **SwagCore** (the Swag ecosystem's Essentia
 server-role: hub
 ```
 
-`hub` — this server is the network's hub/lobby; every module follows its own individual toggle in `config.yml` (or its coded default). `game` — this is a "main"/game server that SwagCore (or similar) already runs full-fat on. On `game` role, hub-behavior modules default **off**:
+`hub`: this server is the network's hub/lobby; every module follows its own individual toggle in `config.yml` (or its coded default). `game`: this is a "main"/game server that SwagCore (or similar) already runs full-fat on. On `game` role, hub-behavior modules default **off**:
 
 - World protection, forced spawn-on-join, join items, clear-inventory
 - Double jump, teleport bow, player hider, anti-WDL
@@ -16,7 +16,7 @@ server-role: hub
 - Scoreboard, tablist, announcements
 - `/fly`, `/gamemode`, `/vanish`
 
-Utility modules unique to SwagHub stay **on** regardless of role: holograms, custom menus, the proxy service, portals, launchpads, the web editor, network stats, and player-state (gamemode/flight persistence). Every default can still be overridden individually — server role only changes defaults, it never hard-locks anything.
+Utility modules unique to SwagHub stay **on** regardless of role: holograms, custom menus, the proxy service, portals, launchpads, the web editor, network stats, and player-state (gamemode/flight persistence). Every default can still be overridden individually; server role only changes defaults, it never hard-locks anything.
 
 ## Auto-Yield
 
@@ -33,9 +33,9 @@ SwagHub detects SwagCore and EssentialsX at startup by plugin name and automatic
 | **SwagCore** | `scoreboard`, `tablist`, `announcements`, `join-quit-messages`, `holograms`, `vanish` |
 | **EssentialsX** | `fly`, `gamemode`, `vanish`, `clearchat` |
 
-Extend the registry with `compatibility.conflicts.<PluginName>: [modules...]` in `config.yml` — entries there are **merged (unioned)** with the built-in defaults, never replacing them, so a config typo or partial redeclaration can only ever add extra yielded modules, never accidentally un-map a built-in one.
+Extend the registry with `compatibility.conflicts.<PluginName>: [modules...]` in `config.yml`. Entries there are **merged (unioned)** with the built-in defaults, never replacing them, so a config typo or partial redeclaration can only ever add extra yielded modules, never accidentally un-map a built-in one.
 
-> Module-enabling (and the auto-yield decision) is deliberately deferred to the first server tick after `onEnable()`, not run synchronously inside it — Bukkit's plugin load order between SwagHub and SwagCore isn't guaranteed by either plugin's `plugin.yml`, so running the yield check too early could see zero yield lines at boot if SwagCore hadn't finished enabling yet.
+> Module-enabling (and the auto-yield decision) is deliberately deferred to the first server tick after `onEnable()`, not run synchronously inside it. Bukkit's plugin load order between SwagHub and SwagCore isn't guaranteed by either plugin's `plugin.yml`, so running the yield check too early could see zero yield lines at boot if SwagCore hadn't finished enabling yet.
 
 ## Per-Module Overrides
 
@@ -55,13 +55,13 @@ compatibility:
 
 `compatibility.overrides.<module>: auto | enabled | disabled` (default `auto`) takes priority over auto-yield in both directions:
 
-- `auto` — follow auto-yield logic (yield if a conflicting plugin is detected, otherwise run per the module's own toggle).
-- `enabled` — force this module on even if a conflicting plugin is present.
-- `disabled` — force this module off regardless of conflicts.
+- `auto`: follow auto-yield logic (yield if a conflicting plugin is detected, otherwise run per the module's own toggle).
+- `enabled`: force this module on even if a conflicting plugin is present.
+- `disabled`: force this module off regardless of conflicts.
 
 ### Recommended Hub-Server Setup
 
-When SwagCore is *also* installed on the hub server (the standard topology — SwagCore typically runs on every backend including the hub), `config.yml` ships this block pre-written and commented out:
+When SwagCore is *also* installed on the hub server (the standard topology: SwagCore typically runs on every backend including the hub), `config.yml` ships this block pre-written and commented out:
 
 ```yaml
 compatibility:
@@ -74,7 +74,7 @@ compatibility:
     # holograms: auto   -> stays yielded to SwagCore (one hologram system network-wide)
 ```
 
-Uncomment this block on the hub server only — SwagHub owns the hub's visual identity there, while SwagCore keeps shared, network-wide systems like vanish and holograms. On pure game servers, leave everything at `auto` with `server-role: game` — no overrides needed.
+Uncomment this block on the hub server only: SwagHub owns the hub's visual identity there, while SwagCore keeps shared, network-wide systems like vanish and holograms. On pure game servers, leave everything at `auto` with `server-role: game`; no overrides needed.
 
 ## Diagnosing a Misconfiguration
 
@@ -82,7 +82,7 @@ Uncomment this block on the hub server only — SwagHub owns the hub's visual id
 /ah info
 ```
 
-Requires `swaghub.command.info` (default `true`). Shows the current server role, every module's registered/enabled state, every yielded module and which plugin it yielded to, and any active overrides — the single place to check when a feature isn't behaving as expected on a mixed SwagCore/SwagHub install.
+Requires `swaghub.command.info` (default `true`). Shows the current server role, every module's registered/enabled state, every yielded module and which plugin it yielded to, and any active overrides: the single place to check when a feature isn't behaving as expected on a mixed SwagCore/SwagHub install.
 
 ## Related Pages
 
