@@ -39,7 +39,7 @@ lobby-teleport-cancelled: "<red>Teleport cancelled — you moved.</red>"
 # --------------------------------------------------------------------------------
 # Sent privately to a player the very first time they join — separate from any
 # server-wide join broadcast (which SwagCore owns when installed, per §6.3).
-first-join-message: "<gray>[<gradient:#7b2ff7:#f107a3>SwagHub</gradient>]</gray> <white>Welcome to the network, this is your first time here!</white>"
+first-join-message: "<gray>[<gradient:#7b2ff7:#f107a3>SwagHub</gradient>]</gray> <white>Welcome to FleaMC, this is your first time here!</white>"
 
 # --------------------------------------------------------------------------------
 # Proxy Service (module: proxy — §11 build step 3)

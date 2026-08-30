@@ -320,7 +320,7 @@ join-settings:
     actions: []
     # actions:
     #   - "[delay] 20"
-    #   - "[message] <gradient:#7b2ff7:#f107a3>Welcome to the network, %player%!</gradient>"
+    #   - "[message] <gradient:#7b2ff7:#f107a3>Welcome to FleaMC, %player%!</gradient>"
 
 # ================================================================================
 #  Proxy Service  (module: proxy — §11 build step 3)
