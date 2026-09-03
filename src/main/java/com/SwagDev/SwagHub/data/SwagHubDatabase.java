@@ -57,7 +57,7 @@ public class SwagHubDatabase {
         try (Connection conn = db.getConnection(); Statement stmt = conn.createStatement()) {
             stmt.executeUpdate("""
                     CREATE TABLE IF NOT EXISTS swaghub_player_data (
-                        uuid TEXT PRIMARY KEY,
+                        uuid VARCHAR(191) PRIMARY KEY,
                         scoreboard_enabled INTEGER NOT NULL DEFAULT 1,
                         vanished INTEGER NOT NULL DEFAULT 0,
                         player_hider_state TEXT NOT NULL DEFAULT 'ALL_VISIBLE',
